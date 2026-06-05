@@ -1,0 +1,402 @@
+package view
+
+// ----------------------------------------------------------------------------
+// "Book a pickup" — a multi-step Alpine modal that posts a real booking.
+//
+// The modal owns its steps and confirmation client-side (smooth, no round-trips
+// between steps); only the final submit hits the server (POST /contact/booking)
+// to persist + email Chanté. The whole thing is one global island in the layout,
+// opened from any CTA via the `booking` Alpine store. Call/text stays the
+// always-available path everywhere else — this is the smoother second door.
+// ----------------------------------------------------------------------------
+
+// btnBook is the primary "Book a pickup" trigger on light (cream) backgrounds.
+templ btnBook(label string) {
+	<button
+		type="button"
+		x-data
+		@click="$store.booking.open()"
+		class="group inline-flex items-center gap-2.5 rounded-pill bg-hl-rust px-7 py-3.5 font-body text-base font-semibold text-hl-white shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep hover:shadow-hl-rust active:scale-[0.97]"
+	>
+		@iconBag("h-[18px] w-[18px]")
+		{ label }
+	</button>
+}
+
+// btnBookLight is the "Book a pickup" trigger on dark (rust) backgrounds.
+templ btnBookLight(label string) {
+	<button
+		type="button"
+		x-data
+		@click="$store.booking.open()"
+		class="group inline-flex items-center gap-2.5 rounded-pill bg-hl-white px-7 py-3.5 font-body text-base font-semibold text-hl-rust-deep transition duration-200 ease-hl-out hover:bg-hl-cream active:scale-[0.97]"
+	>
+		@iconBag("h-[18px] w-[18px]")
+		{ label }
+	</button>
+}
+
+// btnBookNav is the compact rust pill used in the desktop nav.
+templ btnBookNav(label string) {
+	<button
+		type="button"
+		x-data
+		@click="$store.booking.open()"
+		class="inline-flex items-center gap-2 rounded-pill bg-hl-rust px-5 py-2.5 text-sm font-semibold text-hl-white shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep active:scale-[0.97]"
+	>
+		@iconBag("h-4 w-4")
+		{ label }
+	</button>
+}
+
+// BookingModal is the single global booking island. Rendered once in the layout.
+templ BookingModal() {
+	<div
+		x-data="booking()"
+		x-show="$store.booking.show"
+		x-cloak
+		@booking:reset.window="reset(); $nextTick(() => $refs.nameInput && $refs.nameInput.focus())"
+		@keydown.escape.window="$store.booking.close()"
+		class="hl-modal fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-6"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="booking-title"
+	>
+		<!-- Backdrop -->
+		<div
+			x-show="$store.booking.show"
+			x-transition:enter="transition ease-out duration-200"
+			x-transition:enter-start="opacity-0"
+			x-transition:enter-end="opacity-100"
+			x-transition:leave="transition ease-in duration-150"
+			x-transition:leave-start="opacity-100"
+			x-transition:leave-end="opacity-0"
+			@click="$store.booking.close()"
+			class="absolute inset-0 bg-hl-brown/50 backdrop-blur-sm"
+		></div>
+		<!-- Card -->
+		<div
+			x-show="$store.booking.show"
+			x-transition:enter="transition ease-hl-out duration-300"
+			x-transition:enter-start="opacity-0 translate-y-4 sm:scale-[0.97]"
+			x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+			x-transition:leave="transition ease-in duration-150"
+			x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+			x-transition:leave-end="opacity-0 translate-y-4 sm:scale-[0.97]"
+			@click.stop
+			class="relative w-full max-w-[520px] overflow-hidden rounded-t-3xl bg-hl-cream shadow-hl-lg sm:rounded-3xl"
+		>
+			<!-- Close (persists across every step) -->
+			<button
+				type="button"
+				@click="$store.booking.close()"
+				aria-label="Close"
+				class="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-hl-white/20 text-hl-cream transition hover:bg-hl-white/30 active:scale-95"
+			>
+				<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+			</button>
+			<!-- Header (rust band) -->
+			<div class="bg-hl-rust px-7 py-6 pr-16">
+				<div class="flex items-center gap-3.5">
+					<picture>
+						<source srcset="/static/img/badge-sm.webp" type="image/webp"/>
+						<img src="/static/img/badge-sm.png" alt="" width="44" height="44" class="h-11 w-11 shrink-0 rounded-full"/>
+					</picture>
+					<div>
+						<h2 id="booking-title" class="font-display text-[26px] leading-none text-hl-cream" x-text="step < 2 ? 'Schedule a pickup' : (outOfArea ? 'Just outside my route' : &#34;You're all set&#34;)"></h2>
+						<p class="mt-1.5 text-sm text-hl-cream/80" x-text="step < 2 ? ('Step ' + (step + 1) + ' of 2') : (outOfArea ? &#34;Here's the next best thing&#34; : &#34;I'll text you to confirm&#34;)"></p>
+					</div>
+				</div>
+			</div>
+			<!-- Body -->
+			<div class="p-7">
+				<!-- Steps 0 + 1 live in one form; only the final submit hits the server -->
+				<form
+					x-show="step < 2"
+					hx-post="/contact/booking"
+					hx-swap="none"
+					@htmx:before-request="submitting = true; submitError = ''"
+					@htmx:after-request="submitting = false; if ($event.detail.successful) { outOfArea = $event.detail.xhr.getResponseHeader('X-Booking-Result') === 'out-of-area'; step = 2 } else { submitError = $event.detail.xhr.responseText || 'Something went sideways on my end. Try again, or just call or text me.' }"
+				>
+					<!-- Server / network error banner -->
+					<div x-show="submitError" x-cloak class="mb-5 rounded-xl border border-hl-rust/40 bg-hl-rust/[0.07] p-4">
+						<p class="text-[14px] text-hl-rust-deep" x-text="submitError"></p>
+					</div>
+					<!-- Step 1: who + when -->
+					<div x-show="step === 0" class="flex flex-col gap-5">
+						<label class="flex flex-col gap-1.5">
+							<span class="text-[14px] font-semibold text-hl-brown">Your name</span>
+							<input
+								x-ref="nameInput"
+								x-model="name"
+								@keydown.enter.prevent="next()"
+								type="text"
+								name="name"
+								placeholder="Jane from Helena"
+								:class="errors.name ? 'border-hl-rust/70' : 'border-hl-brown/20'"
+								class="w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust"
+							/>
+							<span x-show="errors.name" x-cloak class="text-[13px] text-hl-rust" x-text="errors.name"></span>
+						</label>
+						<label class="flex flex-col gap-1.5">
+							<span class="text-[14px] font-semibold text-hl-brown">Best way to reach you</span>
+							<input
+								x-model="contact"
+								@keydown.enter.prevent="next()"
+								type="text"
+								name="contact"
+								placeholder="Phone or email"
+								:class="errors.contact ? 'border-hl-rust/70' : 'border-hl-brown/20'"
+								class="w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust"
+							/>
+							<span x-show="errors.contact" x-cloak class="text-[13px] text-hl-rust" x-text="errors.contact"></span>
+						</label>
+						<fieldset class="flex flex-col gap-2">
+							<legend class="mb-1 text-[14px] font-semibold text-hl-brown">Pickup day</legend>
+							<div class="flex flex-wrap gap-2">
+								<template x-for="d in ['Monday','Tuesday','Wednesday','Thursday','Friday']" :key="d">
+									<label class="cursor-pointer">
+										<input type="radio" name="day" :value="d" x-model="day" class="sr-only peer"/>
+										<span
+											:class="day === d ? 'border-hl-rust bg-hl-rust text-hl-white' : 'border-hl-brown/20 text-hl-brown-soft hover:border-hl-rust/40'"
+											class="inline-flex rounded-pill border-[1.5px] px-4 py-2 text-[14px] font-semibold transition peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-hl-rust"
+											x-text="d.slice(0, 3)"
+										></span>
+									</label>
+								</template>
+							</div>
+						</fieldset>
+						<button
+							type="button"
+							@click="next()"
+							class="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-pill bg-hl-rust px-7 py-3.5 text-[16px] font-semibold text-hl-cream shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep active:scale-[0.98]"
+						>
+							Continue
+							@iconArrowRight("h-[18px] w-[18px]")
+						</button>
+					</div>
+					<!-- Step 2: plan + details -->
+					<div x-show="step === 1" x-cloak class="flex flex-col gap-3">
+						<span class="text-[14px] font-semibold text-hl-brown">Pick a plan</span>
+						@bookingPlan("standard", "Wash, dry, fold & hang", "$2.00/lb · one-time pickup")
+						@bookingPlan("weekly", "Standing weekly pickup", "$2.00/lb · same day each week")
+						@bookingPlan("rush", "Rush", "$3.00/lb · back in 24 hours")
+						<p class="-mt-0.5 text-[13px] text-hl-brown-faint">$35 minimum order — about one full trash bag. I'll weigh it and tell you the exact number.</p>
+						<label class="mt-1 flex flex-col gap-1.5">
+							<span class="text-[14px] font-semibold text-hl-brown">Pickup address</span>
+							<input
+								x-model="address"
+								@keydown.enter.prevent="trySubmit()"
+								type="text"
+								name="address"
+								autocomplete="street-address"
+								placeholder="Street address — I'll confirm the rest"
+								:class="errors.address ? 'border-hl-rust/70' : 'border-hl-brown/20'"
+								class="w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust"
+							/>
+							<span x-show="errors.address" x-cloak class="text-[13px] text-hl-rust" x-text="errors.address"></span>
+						</label>
+						<label class="flex flex-col gap-1.5">
+							<span class="text-[14px] font-semibold text-hl-brown">ZIP code</span>
+							<input
+								x-model="zip"
+								@keydown.enter.prevent="trySubmit()"
+								type="text"
+								name="zip"
+								inputmode="numeric"
+								autocomplete="postal-code"
+								maxlength="10"
+								placeholder="59601"
+								:class="errors.zip ? 'border-hl-rust/70' : 'border-hl-brown/20'"
+								class="w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust sm:max-w-[10rem]"
+							/>
+							<span x-show="errors.zip" x-cloak class="text-[13px] text-hl-rust" x-text="errors.zip"></span>
+						</label>
+						<label class="flex flex-col gap-1.5">
+							<span class="text-[14px] font-semibold text-hl-brown">Anything I should know? <span class="font-normal text-hl-brown-faint">(optional)</span></span>
+							<textarea
+								x-model="notes"
+								name="notes"
+								rows="2"
+								placeholder="Gate code, delicates, a dog who says hi…"
+								class="w-full rounded-xl border border-hl-brown/20 bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust"
+							></textarea>
+						</label>
+						if TurnstileSiteKey != "" {
+							<div class="cf-turnstile mt-1" data-sitekey={ TurnstileSiteKey }></div>
+						}
+						<div class="mt-2 flex gap-3">
+							<button
+								type="button"
+								@click="step = 0"
+								class="inline-flex items-center justify-center gap-2 rounded-pill border-[1.5px] border-hl-rust-deep px-6 py-3.5 text-[16px] font-semibold text-hl-rust-deep transition hover:bg-hl-rust-deep/[0.06] active:scale-[0.98]"
+							>
+								Back
+							</button>
+							<button
+								type="submit"
+								x-ref="confirmBtn"
+								@click="if (!validateStep1()) $event.preventDefault()"
+								:disabled="submitting"
+								class="inline-flex flex-1 items-center justify-center gap-2 rounded-pill bg-hl-rust px-7 py-3.5 text-[16px] font-semibold text-hl-cream shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep active:scale-[0.98] disabled:opacity-60"
+							>
+								<span x-show="!submitting">Confirm pickup</span>
+								<span x-show="submitting" x-cloak>Booking…</span>
+							</button>
+						</div>
+					</div>
+				</form>
+				<!-- Step 3a: confirmation — in the service area (client-rendered) -->
+				<div x-show="step === 2 && !outOfArea" x-cloak class="flex flex-col items-center gap-4 py-2 text-center">
+					<span class="flex h-16 w-16 items-center justify-center rounded-full bg-hl-teal/15 text-hl-teal-deep">
+						@iconCheck("h-8 w-8")
+					</span>
+					<h3 class="font-display text-[30px] leading-tight text-hl-brown" x-text="&#34;See you &#34; + day + (firstName() ? ', ' + firstName() : '') + '!'"></h3>
+					<p class="max-w-[36ch] text-[15px] leading-relaxed text-hl-brown-soft">
+						Your <b class="text-hl-rust" x-text="planLabel()"></b> pickup is booked. I'll reach out at <b class="text-hl-brown" x-text="contact"></b> to confirm and send a reminder the morning of — just leave your bag by the door.
+					</p>
+					<button
+						type="button"
+						@click="$store.booking.close()"
+						class="mt-1 inline-flex items-center justify-center gap-2 rounded-pill bg-hl-rust px-8 py-3.5 text-[16px] font-semibold text-hl-cream shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep active:scale-[0.98]"
+					>
+						Done
+					</button>
+				</div>
+				<!-- Step 3b: out of area — refer to the waitlist -->
+				<div x-show="step === 2 && outOfArea" x-cloak class="flex flex-col items-center gap-4 py-2 text-center">
+					<span class="flex h-16 w-16 items-center justify-center rounded-full bg-hl-ochre/20 text-hl-ochre-deep">
+						@iconMapPin("h-8 w-8")
+					</span>
+					<h3 class="font-display text-[28px] leading-tight text-hl-brown">Just outside my route — for now.</h3>
+					<p class="max-w-[38ch] text-[15px] leading-relaxed text-hl-brown-soft">
+						Looks like <b class="text-hl-brown" x-text="zip"></b> is past where I can get to right now and still do it right. But I'd rather grow on purpose than guess — put your name down, and when enough folks your way raise their hands, that's where I head next.
+					</p>
+					<a
+						:href="waitlistHref()"
+						class="mt-1 inline-flex items-center justify-center gap-2 rounded-pill bg-hl-rust px-8 py-3.5 text-[16px] font-semibold text-hl-cream shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep active:scale-[0.98]"
+					>
+						@iconArrowRight("h-[18px] w-[18px]")
+						Join the waitlist
+					</a>
+					<button
+						type="button"
+						@click="$store.booking.close()"
+						class="text-[14px] font-semibold text-hl-brown-soft underline decoration-hl-brown/30 underline-offset-4 transition hover:text-hl-rust-deep"
+					>
+						Maybe later
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	@bookingScript()
+}
+
+// bookingPlan renders one selectable plan card. `key` posts as the plan value;
+// the teal ring marks the current choice (mirrors the design-system pattern).
+templ bookingPlan(key, title, detail string) {
+	<label class="block cursor-pointer">
+		<input type="radio" name="plan" value={ key } x-model="plan" class="sr-only peer"/>
+		<span
+			:class={ "plan === '" + key + "' ? 'border-hl-teal ring-[3px] ring-hl-teal/20' : 'border-hl-brown/15 hover:border-hl-teal/40'" }
+			class="flex items-center gap-3.5 rounded-2xl border-[1.5px] bg-hl-white px-4 py-3.5 transition peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-hl-teal"
+		>
+			<span
+				:class={ "plan === '" + key + "' ? 'border-hl-teal bg-hl-teal' : 'border-hl-brown/30'" }
+				class="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-2 transition"
+			>
+				<span x-show={ "plan === '" + key + "'" } x-cloak>
+					@iconCheck("h-3 w-3 text-hl-white")
+				</span>
+			</span>
+			<span class="flex-1">
+				<span class="block text-[15px] font-semibold text-hl-brown">{ title }</span>
+				<span class="block text-[13px] text-hl-brown-soft">{ detail }</span>
+			</span>
+		</span>
+	</label>
+}
+
+// bookingScript registers the Alpine store + component and the modal's motion
+// and reduced-motion rules. Kept inline so the island is fully self-contained.
+templ bookingScript() {
+	<style>
+		@media (prefers-reduced-motion: reduce) {
+			.hl-modal, .hl-modal * { transition-duration: 0.01ms !important; }
+		}
+	</style>
+	<script>
+		document.addEventListener("alpine:init", () => {
+			// Global open/close — any CTA opens the one modal island.
+			Alpine.store("booking", {
+				show: false,
+				open() {
+					this.show = true;
+					document.documentElement.style.overflow = "hidden";
+					window.dispatchEvent(new CustomEvent("booking:reset"));
+				},
+				close() {
+					this.show = false;
+					document.documentElement.style.overflow = "";
+				},
+			});
+
+			// Per-modal step + form state. Lives across steps so the confirmation
+			// can read back what was chosen; reset() runs fresh on every open.
+			Alpine.data("booking", () => ({
+				step: 0,
+				name: "", contact: "", day: "Tuesday", plan: "standard",
+				address: "", zip: "", notes: "",
+				submitting: false, submitError: "", outOfArea: false,
+				errors: { name: "", contact: "", address: "", zip: "" },
+				reset() {
+					this.step = 0;
+					this.name = ""; this.contact = ""; this.day = "Tuesday";
+					this.plan = "standard"; this.address = ""; this.zip = ""; this.notes = "";
+					this.submitting = false; this.submitError = ""; this.outOfArea = false;
+					this.errors = { name: "", contact: "", address: "", zip: "" };
+				},
+				firstName() {
+					return (this.name || "").trim().split(/\s+/)[0] || "";
+				},
+				planLabel() {
+					return ({
+						standard: "wash, dry, fold & hang",
+						weekly: "standing weekly",
+						rush: "rush",
+					})[this.plan] || "pickup";
+				},
+				// waitlistHref deep-links the out-of-area visitor to the waitlist,
+				// pre-filling what they already typed (location = their ZIP).
+				waitlistHref() {
+					const p = new URLSearchParams();
+					if (this.name.trim()) p.set("wl_name", this.name.trim());
+					if (this.zip.trim()) p.set("wl_location", this.zip.trim());
+					if (this.contact.trim()) p.set("wl_contact", this.contact.trim());
+					const q = p.toString();
+					return "/contact" + (q ? "?" + q : "") + "#waitlist";
+				},
+				validateStep0() {
+					this.errors.name = this.name.trim() ? "" : "I'll need a name to know who I'm picking up from.";
+					this.errors.contact = this.contact.trim() ? "" : "Leave a phone or email so I can confirm.";
+					return !this.errors.name && !this.errors.contact;
+				},
+				validateStep1() {
+					this.errors.address = this.address.trim() ? "" : "I'll need a pickup address.";
+					const digits = (this.zip.match(/\d/g) || []).join("").slice(0, 5);
+					this.errors.zip = /^\d{5}$/.test(digits) ? "" : "Add a 5-digit ZIP so I know if I reach you.";
+					return !this.errors.address && !this.errors.zip;
+				},
+				next() {
+					if (this.validateStep0()) this.step = 1;
+				},
+				// trySubmit lets Enter on the address/ZIP fields submit, but only
+				// once step 2 validates (mirrors the Confirm button's gate).
+				trySubmit() {
+					if (this.validateStep1()) this.$refs.confirmBtn.click();
+				},
+			}));
+		});
+	</script>
+}

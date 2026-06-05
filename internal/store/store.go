@@ -90,12 +90,14 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context) error {
 
 // Question is a question/feedback submission from the contact form.
 type Question struct {
-	ID        int64
-	Name      string
-	Contact   string
-	Topic     string
-	Message   string
-	CreatedAt time.Time
+	ID         int64
+	Name       string
+	Contact    string
+	Topic      string
+	Message    string
+	Status     string // new | handled | archived
+	AdminNotes string
+	CreatedAt  time.Time
 }
 
 // CreateQuestion stores a question/feedback submission.
@@ -107,11 +109,13 @@ func (s *Store) CreateQuestion(ctx context.Context, name, contact, topic, messag
 	return err
 }
 
-// ListQuestions returns the most recent question submissions, newest first.
-func (s *Store) ListQuestions(ctx context.Context, limit int) ([]Question, error) {
+// ListQuestions returns question submissions, newest first. A non-empty status
+// filters to that status; "" returns all.
+func (s *Store) ListQuestions(ctx context.Context, status string, limit int) ([]Question, error) {
 	rows, err := s.db.QueryContext(ctx,
-		"SELECT id, name, contact, topic, message, created_at FROM questions ORDER BY created_at DESC LIMIT ?",
-		limit,
+		`SELECT id, name, contact, topic, message, status, admin_notes, created_at
+		 FROM questions WHERE (? = '' OR status = ?) ORDER BY created_at DESC LIMIT ?`,
+		status, status, limit,
 	)
 	if err != nil {
 		return nil, err
@@ -121,7 +125,7 @@ func (s *Store) ListQuestions(ctx context.Context, limit int) ([]Question, error
 	var out []Question
 	for rows.Next() {
 		var q Question
-		if err := rows.Scan(&q.ID, &q.Name, &q.Contact, &q.Topic, &q.Message, &q.CreatedAt); err != nil {
+		if err := rows.Scan(&q.ID, &q.Name, &q.Contact, &q.Topic, &q.Message, &q.Status, &q.AdminNotes, &q.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, q)
@@ -131,13 +135,15 @@ func (s *Store) ListQuestions(ctx context.Context, limit int) ([]Question, error
 
 // WaitlistEntry is an out-of-area waitlist signup.
 type WaitlistEntry struct {
-	ID        int64
-	Name      string
-	Location  string
-	Contact   string
-	Kind      string
-	Notes     string
-	CreatedAt time.Time
+	ID         int64
+	Name       string
+	Location   string
+	Contact    string
+	Kind       string
+	Notes      string
+	Status     string // new | contacted | archived
+	AdminNotes string
+	CreatedAt  time.Time
 }
 
 // CreateWaitlistEntry stores an out-of-area waitlist signup.
@@ -149,11 +155,71 @@ func (s *Store) CreateWaitlistEntry(ctx context.Context, name, location, contact
 	return err
 }
 
-// ListWaitlist returns waitlist signups, newest first.
-func (s *Store) ListWaitlist(ctx context.Context, limit int) ([]WaitlistEntry, error) {
+// Booking is a pickup request from the "Book a pickup" modal.
+type Booking struct {
+	ID            int64
+	Name          string
+	Contact       string
+	PickupDay     string // requested weekday from the modal
+	Plan          string
+	Address       string
+	Zip           string
+	Notes         string
+	Status        string // new | scheduled | picked_up | in_progress | ready | delivered | canceled
+	ScheduledDate string // YYYY-MM-DD, assigned by the operator
+	PickupWindow  string
+	AdminNotes    string
+	CreatedAt     time.Time
+}
+
+// CreateBooking stores a pickup booking from the multi-step modal.
+func (s *Store) CreateBooking(ctx context.Context, name, contact, pickupDay, plan, address, zip, notes string) error {
+	_, err := s.db.ExecContext(ctx,
+		"INSERT INTO bookings (name, contact, pickup_day, plan, address, zip, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		name, contact, pickupDay, plan, address, zip, notes,
+	)
+	return err
+}
+
+// bookingColumns is the canonical SELECT list, shared by list + get.
+const bookingColumns = "id, name, contact, pickup_day, plan, address, zip, notes, status, scheduled_date, pickup_window, admin_notes, created_at"
+
+// scanBooking scans one row in bookingColumns order.
+func scanBooking(sc interface{ Scan(...any) error }, b *Booking) error {
+	return sc.Scan(&b.ID, &b.Name, &b.Contact, &b.PickupDay, &b.Plan, &b.Address, &b.Zip,
+		&b.Notes, &b.Status, &b.ScheduledDate, &b.PickupWindow, &b.AdminNotes, &b.CreatedAt)
+}
+
+// ListBookings returns pickup bookings, newest first. A non-empty status filters
+// to that status; "" returns all.
+func (s *Store) ListBookings(ctx context.Context, status string, limit int) ([]Booking, error) {
 	rows, err := s.db.QueryContext(ctx,
-		"SELECT id, name, location, contact, kind, notes, created_at FROM waitlist ORDER BY created_at DESC LIMIT ?",
-		limit,
+		"SELECT "+bookingColumns+" FROM bookings WHERE (? = '' OR status = ?) ORDER BY created_at DESC LIMIT ?",
+		status, status, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Booking
+	for rows.Next() {
+		var b Booking
+		if err := scanBooking(rows, &b); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// ListWaitlist returns waitlist signups, newest first. A non-empty status filters
+// to that status; "" returns all.
+func (s *Store) ListWaitlist(ctx context.Context, status string, limit int) ([]WaitlistEntry, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, name, location, contact, kind, notes, status, admin_notes, created_at
+		 FROM waitlist WHERE (? = '' OR status = ?) ORDER BY created_at DESC LIMIT ?`,
+		status, status, limit,
 	)
 	if err != nil {
 		return nil, err
@@ -163,7 +229,7 @@ func (s *Store) ListWaitlist(ctx context.Context, limit int) ([]WaitlistEntry, e
 	var out []WaitlistEntry
 	for rows.Next() {
 		var e WaitlistEntry
-		if err := rows.Scan(&e.ID, &e.Name, &e.Location, &e.Contact, &e.Kind, &e.Notes, &e.CreatedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.Name, &e.Location, &e.Contact, &e.Kind, &e.Notes, &e.Status, &e.AdminNotes, &e.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

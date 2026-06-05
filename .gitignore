@@ -38,6 +38,8 @@ web/static/css/site.css
 # Tailwind
 tailwind/tailwindcss
 tailwind/tailwindcss.exe
+tailwind/.tailwind-version
+tailwind/flint-source.css
 
 # SQLite database
 data/

@@ -69,10 +69,17 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 	}
 }
 
-// RequireAuth wraps a handler and redirects unauthenticated users to /login.
+// RequireAuth wraps a handler and sends unauthenticated users to /login. htmx
+// requests get an HX-Redirect on a 2xx (a 303 would be followed by the XHR and
+// swap the login page into the target); everything else gets a normal 303.
 func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if FromContext(r.Context()) == nil {
+			if r.Header.Get("HX-Request") == "true" {
+				w.Header().Set("HX-Redirect", "/login")
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}

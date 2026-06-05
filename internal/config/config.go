@@ -4,7 +4,13 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
+
+// defaultAllowedZips is Chanté's pickup service area — the Helena Valley.
+// Bookings with a ZIP outside this set are routed to the out-of-area waitlist.
+// Override with the ALLOWED_ZIPS env var (comma- or space-separated).
+const defaultAllowedZips = "59601 59602 59634 59635"
 
 type Config struct {
 	Port           int
@@ -17,6 +23,8 @@ type Config struct {
 	TurnstileSecretKey string
 	DBPath             string
 	SessionSecret      string
+	// AllowedZips is the set of ZIP codes Chanté picks up from.
+	AllowedZips []string
 }
 
 // Load reads configuration from environment variables, applying defaults where not set.
@@ -37,7 +45,23 @@ func Load() (*Config, error) {
 		TurnstileSecretKey: os.Getenv("TURNSTILE_SECRET_KEY"),
 		DBPath:             envDefault("DB_PATH", "./data/app.db"),
 		SessionSecret:      os.Getenv("SESSION_SECRET"),
+		AllowedZips:        parseZips(envDefault("ALLOWED_ZIPS", defaultAllowedZips)),
 	}, nil
+}
+
+// parseZips splits a comma/space/newline-separated list into trimmed,
+// non-empty ZIP strings.
+func parseZips(raw string) []string {
+	fields := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == ' ' || r == '\n' || r == '\t' || r == ';'
+	})
+	out := make([]string, 0, len(fields))
+	for _, f := range fields {
+		if f = strings.TrimSpace(f); f != "" {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // Addr returns the server address string in the format expected by http.ListenAndServe.

@@ -26,21 +26,22 @@ templ contactContent(qErrors, qValues map[string]string, qSuccess bool, wErrors,
 				<div class="grid gap-8 p-8 sm:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
 					<div>
 						<p class="text-[13px] font-bold uppercase tracking-caps text-hl-ochre">Schedule a pickup</p>
-						<h2 class="mt-3 font-display text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight text-hl-cream">The fastest way is to call or text.</h2>
+						<h2 class="mt-3 font-display text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight text-hl-cream">Book a pickup in under a minute.</h2>
 						<p class="mt-4 max-w-lg text-[17px] leading-relaxed text-hl-cream/85">
-							Tell me your address and when you'd like your laundry picked up, and you're set. No app to download, no account to make.
+							Tell me your name, when you'd like your laundry picked up, and how you want it done — that's it. No app to download, no account to make. Rather just call or text? That works too.
 						</p>
 						<p class="mt-5 text-[14px] text-hl-cream/70">
 							I pick up across the Helena Valley. Most orders are back on your porch in 24 to 48 hours.
 						</p>
 					</div>
 					<div class="flex flex-col gap-3 lg:items-end">
+						@btnBookLight("Book a pickup")
 						<a
 							href={ templ.SafeURL(PhoneTel) }
-							class="inline-flex items-center justify-center gap-2.5 rounded-pill bg-hl-cream px-7 py-4 text-[18px] font-semibold text-hl-rust transition duration-200 ease-hl-out hover:bg-hl-white active:scale-[0.97]"
+							class="inline-flex items-center justify-center gap-2.5 rounded-pill border-[1.5px] border-hl-cream/60 px-7 py-3 text-[15px] font-semibold text-hl-cream transition hover:bg-hl-cream/10"
 						>
-							@iconPhone("h-5 w-5")
-							{ Phone }
+							@iconPhone("h-[18px] w-[18px]")
+							Call { Phone }
 						</a>
 						<a
 							href={ templ.SafeURL(PhoneSMS) }

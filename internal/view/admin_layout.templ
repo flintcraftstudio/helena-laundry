@@ -1,0 +1,166 @@
+package view
+
+import (
+	"github.com/flintcraftstudio/flint-ui/components/button"
+	"github.com/flintcraftstudio/flint-ui/components/toast"
+)
+
+// AdminBase is the dashboard shell — its own chrome (sidebar + topbar), NOT the
+// public Nav/Footer/BookingModal. Brand-matched via the flint-ui semantic tokens
+// mapped to the Helena palette in tailwind/input.css. active is the current
+// section key ("dashboard" | "bookings" | "inquiries" | "waitlist").
+templ AdminBase(title, userEmail, active string, body templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en" class="bg-background text-foreground">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="robots" content="noindex, nofollow"/>
+			<title>{ title } · Helena Laundry admin</title>
+			<link rel="icon" type="image/png" href="/static/img/favicon.png"/>
+			<link rel="stylesheet" href="/static/css/site.css"/>
+			<script src="/static/js/htmx.min.js" defer></script>
+			<script src="/static/js/alpine.min.js" defer></script>
+		</head>
+		<body x-data="{ nav: false }" class="min-h-screen bg-background font-body text-foreground antialiased">
+			<div class="flex min-h-screen">
+				@adminSidebar(active)
+				<!-- Mobile sidebar overlay -->
+				<div
+					x-show="nav"
+					x-cloak
+					@click="nav = false"
+					class="fixed inset-0 z-30 bg-foreground/40 backdrop-blur-sm lg:hidden"
+				></div>
+				<div
+					x-show="nav"
+					x-cloak
+					x-transition:enter="transition ease-out duration-200"
+					x-transition:enter-start="-translate-x-full"
+					x-transition:enter-end="translate-x-0"
+					class="fixed inset-y-0 left-0 z-40 w-64 lg:hidden"
+				>
+					@adminSidebarInner(active)
+				</div>
+				<!-- Main column -->
+				<div class="flex min-w-0 flex-1 flex-col">
+					@adminTopbar(title, userEmail)
+					<main class="flex-1 px-5 py-7 sm:px-8">
+						<div class="mx-auto max-w-5xl">
+							@body
+						</div>
+					</main>
+				</div>
+			</div>
+			@toast.Container(toast.ContainerProps{})
+		</body>
+	</html>
+}
+
+// adminSidebar is the fixed desktop rail.
+templ adminSidebar(active string) {
+	<aside class="hidden w-64 shrink-0 border-r border-border bg-surface lg:block">
+		@adminSidebarInner(active)
+	</aside>
+}
+
+templ adminSidebarInner(active string) {
+	<div class="flex h-full flex-col bg-surface">
+		<div class="flex items-center gap-3 border-b border-border px-5 py-4">
+			<picture>
+				<source srcset="/static/img/badge-sm.webp" type="image/webp"/>
+				<img src="/static/img/badge-sm.png" alt="" width="36" height="36" class="h-9 w-9 rounded-full"/>
+			</picture>
+			<div class="leading-tight">
+				<div class="font-display text-lg text-foreground">Helena Laundry</div>
+				<div class="text-xs text-muted-foreground">Operations</div>
+			</div>
+		</div>
+		<nav class="flex-1 space-y-1 px-3 py-4" aria-label="Admin">
+			@adminNavItem("/admin", "dashboard", active, "Dashboard") {
+				@iconHome("h-[18px] w-[18px]")
+			}
+			@adminNavItem("/admin/bookings", "bookings", active, "Pickups") {
+				@iconBag("h-[18px] w-[18px]")
+			}
+			@adminNavItem("/admin/inquiries", "inquiries", active, "Inquiries") {
+				@iconMessage("h-[18px] w-[18px]")
+			}
+			@adminNavItem("/admin/waitlist", "waitlist", active, "Waitlist") {
+				@iconMapPin("h-[18px] w-[18px]")
+			}
+			<div class="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">Soon</div>
+			@adminNavSoon("Calendar") {
+				@iconClock("h-[18px] w-[18px]")
+			}
+			@adminNavSoon("Settings") {
+				@iconSparkle("h-[18px] w-[18px]")
+			}
+			@adminNavSoon("Billing") {
+				@iconCheck("h-[18px] w-[18px]")
+			}
+		</nav>
+		<div class="border-t border-border px-3 py-3 text-xs text-muted-foreground">
+			<a href="/" class="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-muted hover:text-foreground">
+				@iconArrowRight("h-4 w-4 rotate-180")
+				View the public site
+			</a>
+		</div>
+	</div>
+}
+
+// adminNavItem is an active-aware sidebar link.
+templ adminNavItem(href, key, active, label string) {
+	<a
+		href={ templ.SafeURL(href) }
+		class={ "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+			templ.KV("bg-accent/10 text-accent", key == active),
+			templ.KV("text-foreground/80 hover:bg-muted hover:text-foreground", key != active) }
+		aria-current={ ariaCurrent(key == active) }
+	>
+		{ children... }
+		{ label }
+	</a>
+}
+
+// adminNavSoon is a disabled placeholder for a future section.
+templ adminNavSoon(label string) {
+	<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/60" aria-disabled="true">
+		{ children... }
+		{ label }
+	</span>
+}
+
+// adminTopbar holds the mobile nav toggle, page title, and the signed-in user.
+templ adminTopbar(title, userEmail string) {
+	<header class="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-surface/90 px-5 py-3 backdrop-blur-md sm:px-8">
+		<button
+			type="button"
+			@click="nav = true"
+			class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground lg:hidden"
+			aria-label="Open menu"
+		>
+			<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+		</button>
+		<h1 class="min-w-0 flex-1 truncate font-display text-xl text-foreground">{ title }</h1>
+		<span class="hidden text-sm text-muted-foreground sm:inline">{ userEmail }</span>
+		@button.Button(button.Props{
+			Plain: true,
+			Type:  "button",
+			Attrs: templ.Attributes{
+				"hx-post":   "/logout",
+				"hx-target": "body",
+			},
+		}) {
+			Sign out
+		}
+	</header>
+}
+
+// ariaCurrent returns "page" when active, else "" (templ drops empty attrs).
+func ariaCurrent(active bool) string {
+	if active {
+		return "page"
+	}
+	return ""
+}

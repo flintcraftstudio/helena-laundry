@@ -50,9 +50,13 @@ templ homeContent() {
 					Helena's wash-and-fold, run by one person who actually cares how your towels come out. You leave it on the porch. I do the rest.
 				</p>
 				<div class="mt-8 flex flex-wrap gap-3.5">
-					@btnCall("Call or text to book a pickup")
+					@btnBook("Book a pickup")
 					@btnGhostIcon("/contact", "Questions? Send a note")
 				</div>
+				<p class="mt-4 inline-flex flex-wrap items-center gap-1.5 text-[15px] text-hl-brown-soft">
+					Rather talk?
+					<a href={ templ.SafeURL(PhoneTel) } class="font-semibold text-hl-rust-deep underline decoration-hl-rust-deep/40 underline-offset-4 transition hover:decoration-hl-rust-deep">Call or text { Phone }</a>
+				</p>
 				<div class="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-[15px] font-medium text-hl-brown-soft">
 					@heroStat("$2/lb")
 					<span class="h-4 w-px bg-hl-brown/20"></span>
@@ -222,23 +226,26 @@ templ homeContent() {
 		<div class="mx-auto max-w-content px-5 py-20 text-center sm:px-8 sm:py-28">
 			<h2 class="mx-auto max-w-2xl font-display text-display-xl text-hl-white">Ready when you are.</h2>
 			<p class="mx-auto mt-5 max-w-xl text-lg text-hl-white/95">
-				Set your laundry on the porch and get your evening back. Call or text to book your first pickup — or send a note if you've got a question first.
+				Set your laundry on the porch and get your evening back. Book your first pickup in under a minute — or call, text, or send a note if you've got a question first.
 			</p>
-			<div class="mt-9 flex flex-col items-center gap-4">
-				<a
-					href={ templ.SafeURL(PhoneTel) }
-					class="inline-flex items-center gap-2.5 rounded-pill bg-hl-white px-7 py-3.5 text-base font-semibold text-hl-rust-deep transition duration-200 ease-hl-out hover:bg-hl-cream active:scale-[0.97]"
-				>
-					@iconPhone("h-[18px] w-[18px]")
-					Call or text: { Phone }
-				</a>
-				<a
-					href="/contact"
-					class="group inline-flex items-center gap-1.5 text-base font-semibold text-hl-white underline decoration-hl-white/50 underline-offset-4 transition hover:decoration-hl-white"
-				>
-					Rather send a note first?
-					@iconArrowRight("h-4 w-4 transition-transform duration-200 ease-hl-out group-hover:translate-x-0.5")
-				</a>
+			<div class="mt-9 flex flex-col items-center gap-5">
+				@btnBookLight("Book a pickup")
+				<div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-base font-semibold text-hl-white">
+					<a
+						href={ templ.SafeURL(PhoneTel) }
+						class="underline decoration-hl-white/50 underline-offset-4 transition hover:decoration-hl-white"
+					>
+						Call or text { Phone }
+					</a>
+					<span class="text-hl-white/40" aria-hidden="true">·</span>
+					<a
+						href="/contact"
+						class="group inline-flex items-center gap-1.5 underline decoration-hl-white/50 underline-offset-4 transition hover:decoration-hl-white"
+					>
+						Send a note
+						@iconArrowRight("h-4 w-4 transition-transform duration-200 ease-hl-out group-hover:translate-x-0.5")
+					</a>
+				</div>
 			</div>
 		</div>
 	</section>

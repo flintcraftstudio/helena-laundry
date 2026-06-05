@@ -14,9 +14,19 @@ import (
 )
 
 // Contact handles GET /contact and renders the contact / schedule page.
+// The booking modal refers out-of-area visitors here with wl_* query params,
+// so the waitlist form arrives pre-filled with what they already typed.
 func Contact() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := view.ContactPage(nil, nil, false, nil, nil, false).Render(r.Context(), w); err != nil {
+		var wValues map[string]string
+		if q := r.URL.Query(); q.Get("wl_name") != "" || q.Get("wl_location") != "" || q.Get("wl_contact") != "" {
+			wValues = map[string]string{
+				"name":     strings.TrimSpace(q.Get("wl_name")),
+				"location": strings.TrimSpace(q.Get("wl_location")),
+				"contact":  strings.TrimSpace(q.Get("wl_contact")),
+			}
+		}
+		if err := view.ContactPage(nil, nil, false, nil, wValues, false).Render(r.Context(), w); err != nil {
 			slog.Error("render error", "err", err)
 		}
 	}

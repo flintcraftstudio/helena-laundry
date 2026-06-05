@@ -23,11 +23,12 @@ templ Nav() {
 				@navLink("/contact", "Contact")
 				<a
 					href={ templ.SafeURL(PhoneTel) }
-					class="inline-flex items-center gap-2 rounded-pill bg-hl-rust px-5 py-2.5 text-sm font-semibold text-hl-white shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep active:scale-[0.97]"
+					class="inline-flex items-center gap-1.5 text-[15px] font-medium text-hl-brown-soft transition hover:text-hl-rust-deep"
 				>
 					@iconPhone("h-4 w-4")
 					{ Phone }
 				</a>
+				@btnBookNav("Book a pickup")
 			</nav>
 			<!-- Mobile toggle -->
 			<button
@@ -55,9 +56,17 @@ templ Nav() {
 				@navLinkMobile("/about", "About")
 				@navLinkMobile("/businesses", "For businesses")
 				@navLinkMobile("/contact", "Contact")
+				<button
+					type="button"
+					@click="open = false; $store.booking.open()"
+					class="mt-3 inline-flex items-center justify-center gap-2 rounded-pill bg-hl-rust px-5 py-3 text-[15px] font-semibold text-hl-white active:scale-[0.98]"
+				>
+					@iconBag("h-[18px] w-[18px]")
+					Book a pickup
+				</button>
 				<a
 					href={ templ.SafeURL(PhoneTel) }
-					class="mt-3 inline-flex items-center justify-center gap-2 rounded-pill bg-hl-rust px-5 py-3 text-[15px] font-semibold text-hl-white"
+					class="inline-flex items-center justify-center gap-2 rounded-pill border-[1.5px] border-hl-rust-deep px-5 py-3 text-[15px] font-semibold text-hl-rust-deep"
 				>
 					@iconPhone("h-[18px] w-[18px]")
 					Call or text { Phone }

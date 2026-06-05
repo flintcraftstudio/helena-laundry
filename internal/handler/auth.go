@@ -65,8 +65,7 @@ func LoginSubmit(s *store.Store) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("HX-Redirect", "/")
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		redirect(w, r, "/")
 	}
 }
 
@@ -76,6 +75,19 @@ func Logout(s *store.Store) http.HandlerFunc {
 		if err := session.Destroy(r.Context(), w, r, s); err != nil {
 			slog.Error("session destroy error", "err", err)
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		redirect(w, r, "/login")
 	}
+}
+
+// redirect sends the client to url. For htmx requests it must use the HX-Redirect
+// header on a 2xx response — an http.Redirect (3xx) is followed transparently by
+// the XHR, so htmx never sees it and swaps the destination page into the form.
+// Non-htmx requests get a normal 303 redirect.
+func redirect(w http.ResponseWriter, r *http.Request, url string) {
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", url)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	http.Redirect(w, r, url, http.StatusSeeOther)
 }

@@ -1,0 +1,537 @@
+package view
+
+import (
+	"fmt"
+
+	"github.com/firefly-software-mt/advanced-template/internal/store"
+
+	"github.com/flintcraftstudio/flint-ui/components/badge"
+	"github.com/flintcraftstudio/flint-ui/components/button"
+	"github.com/flintcraftstudio/flint-ui/components/card"
+	"github.com/flintcraftstudio/flint-ui/components/input"
+	"github.com/flintcraftstudio/flint-ui/components/selectbox"
+	"github.com/flintcraftstudio/flint-ui/components/table"
+	"github.com/flintcraftstudio/flint-ui/components/tabs"
+	"github.com/flintcraftstudio/flint-ui/components/textarea"
+)
+
+// ===========================================================================
+// Dashboard
+// ===========================================================================
+
+templ AdminDashboardPage(userEmail string, counts AdminCounts, bookings []store.Booking, inquiries []store.Question, waitlist []store.WaitlistEntry) {
+	@AdminBase("Dashboard", userEmail, "dashboard", adminDashboardBody(counts, bookings, inquiries, waitlist))
+}
+
+templ adminDashboardBody(counts AdminCounts, bookings []store.Booking, inquiries []store.Question, waitlist []store.WaitlistEntry) {
+	<p class="mb-6 text-sm text-muted-foreground">What needs you today.</p>
+	<div class="grid gap-4 sm:grid-cols-3">
+		@countTile("/admin/bookings", "New pickups", counts.Bookings)
+		@countTile("/admin/inquiries", "New inquiries", counts.Inquiries)
+		@countTile("/admin/waitlist", "New on waitlist", counts.Waitlist)
+	</div>
+	<div class="mt-8 space-y-8">
+		@recentCard("Latest pickups", "/admin/bookings") {
+			if len(bookings) == 0 {
+				@adminEmpty("No pickups yet.")
+			} else {
+				@table.Table(table.Props{Bleed: true}) {
+					@table.Body(table.BodyProps{}) {
+						for _, b := range bookings {
+							@table.Row(table.RowProps{}) {
+								@table.Cell(table.CellProps{Dense: true}) {
+									<span class="font-medium text-foreground">{ b.Name }</span>
+								}
+								@table.Cell(table.CellProps{Dense: true}) {
+									<span class="text-muted-foreground">{ planShort(b.Plan) } · { orDash(b.Zip) }</span>
+								}
+								@table.Cell(table.CellProps{Dense: true}) {
+									@badge.Badge(badge.Props{Variant: bookingStatusVariant(b.Status)}) {
+										{ bookingStatusLabel(b.Status) }
+									}
+								}
+								@table.Cell(table.CellProps{Dense: true, Class: "text-right text-muted-foreground"}) {
+									{ humanDate(b.CreatedAt) }
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		@recentCard("Latest inquiries", "/admin/inquiries") {
+			if len(inquiries) == 0 {
+				@adminEmpty("No inquiries yet.")
+			} else {
+				@table.Table(table.Props{Bleed: true}) {
+					@table.Body(table.BodyProps{}) {
+						for _, q := range inquiries {
+							@table.Row(table.RowProps{}) {
+								@table.Cell(table.CellProps{Dense: true}) {
+									<span class="font-medium text-foreground">{ q.Name }</span>
+								}
+								@table.Cell(table.CellProps{Dense: true, Class: "text-muted-foreground"}) {
+									{ truncate(q.Message, 48) }
+								}
+								@table.Cell(table.CellProps{Dense: true}) {
+									@badge.Badge(badge.Props{Variant: questionStatusVariant(q.Status)}) {
+										{ questionStatusLabel(q.Status) }
+									}
+								}
+								@table.Cell(table.CellProps{Dense: true, Class: "text-right text-muted-foreground"}) {
+									{ humanDate(q.CreatedAt) }
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	</div>
+}
+
+templ countTile(href, label string, n int) {
+	<a href={ templ.SafeURL(href) } class="group block">
+		@card.Card(card.Props{Class: "transition group-hover:border-accent/40"}) {
+			@card.Body(card.SubProps{}) {
+				<div class="flex items-center justify-between">
+					<span class="text-sm font-medium text-muted-foreground">{ label }</span>
+					if n > 0 {
+						@badge.Badge(badge.Props{Variant: badge.VariantAccent}) { { fmt.Sprintf("%d", n) } }
+					}
+				</div>
+				<div class="mt-2 font-display text-3xl text-foreground">{ fmt.Sprintf("%d", n) }</div>
+			}
+		}
+	</a>
+}
+
+templ recentCard(title, href string) {
+	@card.Card(card.Props{}) {
+		@card.Header(card.SubProps{Class: "flex items-center justify-between"}) {
+			<h2 class="font-display text-lg text-foreground">{ title }</h2>
+			<a href={ templ.SafeURL(href) } class="text-sm font-medium text-accent hover:text-accent/80">View all</a>
+		}
+		@card.Body(card.SubProps{}) {
+			{ children... }
+		}
+	}
+}
+
+// ===========================================================================
+// Pickups
+// ===========================================================================
+
+templ AdminBookingsPage(userEmail, status string, bookings []store.Booking) {
+	@AdminBase("Pickups", userEmail, "bookings", adminSectionIntro("Pickup bookings", "Schedule, track, and close out every pickup.", BookingsSection(status, bookings)))
+}
+
+templ BookingsSection(status string, bookings []store.Booking) {
+	<section id="bookings-section">
+		@adminFilterTabs("bookings-section", "/admin/bookings", status, bookingStatusOrder, bookingStatusLabel)
+		<div class="mt-4">
+			@card.Card(card.Props{}) {
+				@card.Body(card.SubProps{}) {
+					if len(bookings) == 0 {
+						@adminEmpty("No pickups here yet.")
+					} else {
+						@table.Table(table.Props{}) {
+							@table.Head(table.HeadProps{}) {
+								<tr>
+									@table.Header(table.HeaderProps{}) { Customer }
+									@table.Header(table.HeaderProps{}) { Contact }
+									@table.Header(table.HeaderProps{}) { Requested }
+									@table.Header(table.HeaderProps{}) { Plan }
+									@table.Header(table.HeaderProps{}) { Scheduled }
+									@table.Header(table.HeaderProps{}) { Status }
+									@table.Header(table.HeaderProps{Class: "text-right"}) { Manage }
+								</tr>
+							}
+							@table.Body(table.BodyProps{}) {
+								for _, b := range bookings {
+									@BookingSummaryRow(b)
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	</section>
+}
+
+templ BookingSummaryRow(b store.Booking) {
+	@table.Row(table.RowProps{Attrs: templ.Attributes{"id": rowID("booking", b.ID)}}) {
+		@table.Cell(table.CellProps{}) {
+			<div class="font-medium text-foreground">{ b.Name }</div>
+			<div class="text-xs text-muted-foreground">{ orDash(b.Address) }, { orDash(b.Zip) }</div>
+		}
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { b.Contact } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { b.PickupDay } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { planShort(b.Plan) } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { scheduledLabel(b.ScheduledDate, b.PickupWindow) } }
+		@table.Cell(table.CellProps{}) {
+			@badge.Badge(badge.Props{Variant: bookingStatusVariant(b.Status)}) { { bookingStatusLabel(b.Status) } }
+		}
+		@table.Cell(table.CellProps{Class: "text-right"}) {
+			@button.Button(button.Props{Plain: true, Attrs: editAttrs("/admin/bookings", "booking", b.ID)}) { Manage }
+		}
+	}
+}
+
+templ BookingEditRow(b store.Booking) {
+	<tr id={ rowID("booking", b.ID) } class="bg-muted/40">
+		<td colspan="7" class="px-4 py-5 sm:px-6">
+			<form
+				hx-post={ fmt.Sprintf("/admin/bookings/%d", b.ID) }
+				hx-target={ "#" + rowID("booking", b.ID) }
+				hx-swap="outerHTML"
+				class="grid gap-6 md:grid-cols-2"
+			>
+				<div class="space-y-1.5 text-sm">
+					<h3 class="font-display text-base text-foreground">{ b.Name }</h3>
+					@adminDetail("Address", orDash(b.Address)+", "+orDash(b.Zip))
+					@adminDetail("Contact", b.Contact)
+					@adminDetail("Plan", planShort(b.Plan))
+					@adminDetail("Requested day", b.PickupDay)
+					@adminDetail("Their note", orDash(b.Notes))
+					@adminDetail("Booked", humanDateTime(b.CreatedAt))
+				</div>
+				<div class="space-y-4">
+					<div class="grid grid-cols-2 gap-3">
+						<label class="block">
+							<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
+							@selectbox.Select(selectbox.Props{Name: "status"}) {
+								for _, s := range bookingStatusOrder {
+									<option value={ s } selected?={ s == b.Status }>{ bookingStatusLabel(s) }</option>
+								}
+							}
+						</label>
+						<label class="block">
+							<span class="mb-1.5 block text-sm font-medium text-foreground">Pickup date</span>
+							@input.Input(input.Props{Type: "date", Name: "scheduled_date", Value: b.ScheduledDate})
+						</label>
+					</div>
+					<label class="block">
+						<span class="mb-1.5 block text-sm font-medium text-foreground">Window</span>
+						@input.Input(input.Props{Name: "pickup_window", Value: b.PickupWindow, Placeholder: "e.g. 9–11am"})
+					</label>
+					<label class="block">
+						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
+						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 2, Value: b.AdminNotes, NonResizable: true})
+					</label>
+					@adminEditActions("/admin/bookings", "booking", b.ID)
+				</div>
+			</form>
+		</td>
+	</tr>
+}
+
+// ===========================================================================
+// Inquiries
+// ===========================================================================
+
+templ AdminInquiriesPage(userEmail, status string, inquiries []store.Question) {
+	@AdminBase("Inquiries", userEmail, "inquiries", adminSectionIntro("Contact inquiries", "Questions and feedback sent from the site.", InquiriesSection(status, inquiries)))
+}
+
+templ InquiriesSection(status string, inquiries []store.Question) {
+	<section id="inquiries-section">
+		@adminFilterTabs("inquiries-section", "/admin/inquiries", status, questionStatusOrder, questionStatusLabel)
+		<div class="mt-4">
+			@card.Card(card.Props{}) {
+				@card.Body(card.SubProps{}) {
+					if len(inquiries) == 0 {
+						@adminEmpty("No inquiries here yet.")
+					} else {
+						@table.Table(table.Props{}) {
+							@table.Head(table.HeadProps{}) {
+								<tr>
+									@table.Header(table.HeaderProps{}) { From }
+									@table.Header(table.HeaderProps{}) { Topic }
+									@table.Header(table.HeaderProps{}) { Message }
+									@table.Header(table.HeaderProps{}) { Received }
+									@table.Header(table.HeaderProps{}) { Status }
+									@table.Header(table.HeaderProps{Class: "text-right"}) { Manage }
+								</tr>
+							}
+							@table.Body(table.BodyProps{}) {
+								for _, q := range inquiries {
+									@InquirySummaryRow(q)
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	</section>
+}
+
+templ InquirySummaryRow(q store.Question) {
+	@table.Row(table.RowProps{Attrs: templ.Attributes{"id": rowID("inquiry", q.ID)}}) {
+		@table.Cell(table.CellProps{}) {
+			<div class="font-medium text-foreground">{ q.Name }</div>
+			<div class="text-xs text-muted-foreground">{ q.Contact }</div>
+		}
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { q.Topic } }
+		@table.Cell(table.CellProps{Class: "max-w-xs truncate text-muted-foreground"}) { { truncate(q.Message, 60) } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { humanDate(q.CreatedAt) } }
+		@table.Cell(table.CellProps{}) {
+			@badge.Badge(badge.Props{Variant: questionStatusVariant(q.Status)}) { { questionStatusLabel(q.Status) } }
+		}
+		@table.Cell(table.CellProps{Class: "text-right"}) {
+			@button.Button(button.Props{Plain: true, Attrs: editAttrs("/admin/inquiries", "inquiry", q.ID)}) { Manage }
+		}
+	}
+}
+
+templ InquiryEditRow(q store.Question) {
+	<tr id={ rowID("inquiry", q.ID) } class="bg-muted/40">
+		<td colspan="6" class="px-4 py-5 sm:px-6">
+			<form
+				hx-post={ fmt.Sprintf("/admin/inquiries/%d", q.ID) }
+				hx-target={ "#" + rowID("inquiry", q.ID) }
+				hx-swap="outerHTML"
+				class="grid gap-6 md:grid-cols-2"
+			>
+				<div class="space-y-1.5 text-sm">
+					<h3 class="font-display text-base text-foreground">{ q.Name }</h3>
+					@adminDetail("Contact", q.Contact)
+					@adminDetail("Topic", q.Topic)
+					@adminDetail("Received", humanDateTime(q.CreatedAt))
+					<p class="mt-3 whitespace-pre-line rounded-lg bg-surface p-3 text-foreground">{ q.Message }</p>
+				</div>
+				<div class="space-y-4">
+					<label class="block">
+						<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
+						@selectbox.Select(selectbox.Props{Name: "status"}) {
+							for _, s := range questionStatusOrder {
+								<option value={ s } selected?={ s == q.Status }>{ questionStatusLabel(s) }</option>
+							}
+						}
+					</label>
+					<label class="block">
+						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
+						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: q.AdminNotes, NonResizable: true})
+					</label>
+					@adminEditActions("/admin/inquiries", "inquiry", q.ID)
+				</div>
+			</form>
+		</td>
+	</tr>
+}
+
+// ===========================================================================
+// Waitlist
+// ===========================================================================
+
+templ AdminWaitlistPage(userEmail, status string, entries []store.WaitlistEntry) {
+	@AdminBase("Waitlist", userEmail, "waitlist", adminSectionIntro("Out-of-area waitlist", "Demand outside the current route — where to grow next.", WaitlistSection(status, entries)))
+}
+
+templ WaitlistSection(status string, entries []store.WaitlistEntry) {
+	<section id="waitlist-section">
+		@adminFilterTabs("waitlist-section", "/admin/waitlist", status, waitlistStatusOrder, waitlistStatusLabel)
+		<div class="mt-4">
+			@card.Card(card.Props{}) {
+				@card.Body(card.SubProps{}) {
+					if len(entries) == 0 {
+						@adminEmpty("No waitlist signups here yet.")
+					} else {
+						@table.Table(table.Props{}) {
+							@table.Head(table.HeadProps{}) {
+								<tr>
+									@table.Header(table.HeaderProps{}) { Name }
+									@table.Header(table.HeaderProps{}) { Where }
+									@table.Header(table.HeaderProps{}) { Contact }
+									@table.Header(table.HeaderProps{}) { Kind }
+									@table.Header(table.HeaderProps{}) { Received }
+									@table.Header(table.HeaderProps{}) { Status }
+									@table.Header(table.HeaderProps{Class: "text-right"}) { Manage }
+								</tr>
+							}
+							@table.Body(table.BodyProps{}) {
+								for _, e := range entries {
+									@WaitlistSummaryRow(e)
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	</section>
+}
+
+templ WaitlistSummaryRow(e store.WaitlistEntry) {
+	@table.Row(table.RowProps{Attrs: templ.Attributes{"id": rowID("waitlist", e.ID)}}) {
+		@table.Cell(table.CellProps{}) {
+			<span class="font-medium text-foreground">{ e.Name }</span>
+		}
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { e.Location } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { e.Contact } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { e.Kind } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { humanDate(e.CreatedAt) } }
+		@table.Cell(table.CellProps{}) {
+			@badge.Badge(badge.Props{Variant: waitlistStatusVariant(e.Status)}) { { waitlistStatusLabel(e.Status) } }
+		}
+		@table.Cell(table.CellProps{Class: "text-right"}) {
+			@button.Button(button.Props{Plain: true, Attrs: editAttrs("/admin/waitlist", "waitlist", e.ID)}) { Manage }
+		}
+	}
+}
+
+templ WaitlistEditRow(e store.WaitlistEntry) {
+	<tr id={ rowID("waitlist", e.ID) } class="bg-muted/40">
+		<td colspan="7" class="px-4 py-5 sm:px-6">
+			<form
+				hx-post={ fmt.Sprintf("/admin/waitlist/%d", e.ID) }
+				hx-target={ "#" + rowID("waitlist", e.ID) }
+				hx-swap="outerHTML"
+				class="grid gap-6 md:grid-cols-2"
+			>
+				<div class="space-y-1.5 text-sm">
+					<h3 class="font-display text-base text-foreground">{ e.Name }</h3>
+					@adminDetail("Where", e.Location)
+					@adminDetail("Contact", e.Contact)
+					@adminDetail("Kind", e.Kind)
+					@adminDetail("Joined", humanDateTime(e.CreatedAt))
+					@adminDetail("Their note", orDash(e.Notes))
+				</div>
+				<div class="space-y-4">
+					<label class="block">
+						<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
+						@selectbox.Select(selectbox.Props{Name: "status"}) {
+							for _, s := range waitlistStatusOrder {
+								<option value={ s } selected?={ s == e.Status }>{ waitlistStatusLabel(s) }</option>
+							}
+						}
+					</label>
+					<label class="block">
+						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
+						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: e.AdminNotes, NonResizable: true})
+					</label>
+					@adminEditActions("/admin/waitlist", "waitlist", e.ID)
+				</div>
+			</form>
+		</td>
+	</tr>
+}
+
+// ===========================================================================
+// Shared admin bits
+// ===========================================================================
+
+// adminSectionIntro wraps a section with a page heading + lead line.
+templ adminSectionIntro(title, lead string, section templ.Component) {
+	<div class="mb-6">
+		<h2 class="font-display text-2xl text-foreground">{ title }</h2>
+		<p class="mt-1 text-sm text-muted-foreground">{ lead }</p>
+	</div>
+	@section
+}
+
+// adminFilterTabs is a flint-ui ModeServer tab row that swaps the section via htmx.
+templ adminFilterTabs(sectionID, basePath, active string, order []string, label func(string) string) {
+	@tabs.Tabs(tabs.Props{Mode: tabs.ModeServer, Active: statusKeyOrAll(active)}) {
+		@tabs.List(tabs.ListProps{Mode: tabs.ModeServer}) {
+			@adminFilterTab(sectionID, basePath, "all", "All", active)
+			for _, s := range order {
+				@adminFilterTab(sectionID, basePath, s, label(s), active)
+			}
+		}
+	}
+}
+
+templ adminFilterTab(sectionID, basePath, name, label, active string) {
+	@tabs.Tab(tabs.TabProps{
+		Name:   name,
+		Mode:   tabs.ModeServer,
+		Active: statusKeyOrAll(active),
+		Attrs: templ.Attributes{
+			"hx-get":      tabURL(basePath, name),
+			"hx-target":   "#" + sectionID,
+			"hx-swap":     "outerHTML",
+			"hx-push-url": "true",
+		},
+	}) {
+		{ label }
+	}
+}
+
+// adminDetail is a label/value line in an edit panel.
+templ adminDetail(label, value string) {
+	<div class="flex gap-2">
+		<span class="w-28 shrink-0 text-muted-foreground">{ label }</span>
+		<span class="text-foreground">{ value }</span>
+	</div>
+}
+
+// adminEditActions is the Save / Cancel pair shared by every edit form. path is
+// the resource collection URL (e.g. "/admin/bookings"); kind is the row-id prefix.
+templ adminEditActions(path, kind string, id int64) {
+	<div class="flex items-center gap-3 pt-1">
+		@button.Button(button.Props{Variant: button.VariantAccent, Type: "submit"}) { Save }
+		@button.Button(button.Props{Plain: true, Attrs: templ.Attributes{
+			"hx-get":    fmt.Sprintf("%s/%d", path, id),
+			"hx-target": "#" + rowID(kind, id),
+			"hx-swap":   "outerHTML",
+		}}) {
+			Cancel
+		}
+	</div>
+}
+
+templ adminEmpty(msg string) {
+	<div class="px-6 py-12 text-center text-sm text-muted-foreground">{ msg }</div>
+}
+
+// ---------------------------------------------------------------------------
+// Small Go helpers for the admin views.
+// ---------------------------------------------------------------------------
+
+// rowID is the stable DOM id for a resource row (e.g. "booking-row-42").
+func rowID(kind string, id int64) string {
+	return fmt.Sprintf("%s-row-%d", kind, id)
+}
+
+// editAttrs are the htmx attributes that swap a summary row for its edit form.
+// path is the resource collection URL; kind is the row-id prefix.
+func editAttrs(path, kind string, id int64) templ.Attributes {
+	return templ.Attributes{
+		"hx-get":    fmt.Sprintf("%s/%d/edit", path, id),
+		"hx-target": "#" + rowID(kind, id),
+		"hx-swap":   "outerHTML",
+	}
+}
+
+// tabURL builds a filter tab's hx-get URL ("all" drops the query).
+func tabURL(basePath, name string) string {
+	if name == "all" {
+		return basePath
+	}
+	return basePath + "?status=" + name
+}
+
+// statusKeyOrAll maps the empty status to the "all" tab key.
+func statusKeyOrAll(status string) string {
+	if status == "" {
+		return "all"
+	}
+	return status
+}
+
+// planShort is the compact plan label used in dense admin tables.
+func planShort(plan string) string {
+	switch plan {
+	case "standard":
+		return "Wash & fold"
+	case "weekly":
+		return "Weekly"
+	case "rush":
+		return "Rush"
+	default:
+		return plan
+	}
+}

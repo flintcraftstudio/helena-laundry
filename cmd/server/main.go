@@ -98,6 +98,13 @@ func main() {
 		slog.Info("postmark not configured, contact form emails disabled")
 	}
 
+	// Service-area ZIP allowlist for the booking modal (out-of-area -> waitlist).
+	allowedZips := make(map[string]bool, len(cfg.AllowedZips))
+	for _, z := range cfg.AllowedZips {
+		allowedZips[z] = true
+	}
+	slog.Info("booking service area", "zips", cfg.AllowedZips)
+
 	mux := http.NewServeMux()
 
 	// Static files
@@ -110,14 +117,31 @@ func main() {
 	mux.Handle("GET /businesses", handler.Businesses())
 	mux.Handle("GET /contact", handler.Contact())
 
-	// Contact forms (two deliberately distinct capture paths)
+	// Contact forms (deliberately distinct capture paths)
 	mux.Handle("POST /contact/question", handler.QuestionSubmit(st, mailer, cfg.TurnstileSecretKey))
 	mux.Handle("POST /contact/waitlist", handler.WaitlistSubmit(st, mailer, cfg.TurnstileSecretKey))
+	mux.Handle("POST /contact/booking", handler.BookingSubmit(st, mailer, cfg.TurnstileSecretKey, allowedZips))
 
 	// Auth
 	mux.Handle("GET /login", handler.LoginPage())
 	mux.Handle("POST /login", handler.LoginSubmit(st))
 	mux.Handle("POST /logout", handler.Logout(st))
+
+	// Admin dashboard (all routes gated by RequireAuth -> /login).
+	protected := func(h http.Handler) http.Handler { return session.RequireAuth(h) }
+	mux.Handle("GET /admin", protected(handler.AdminDashboard(st)))
+	mux.Handle("GET /admin/bookings", protected(handler.AdminBookings(st)))
+	mux.Handle("GET /admin/bookings/{id}", protected(handler.AdminBookingRow(st)))
+	mux.Handle("GET /admin/bookings/{id}/edit", protected(handler.AdminBookingEdit(st)))
+	mux.Handle("POST /admin/bookings/{id}", protected(handler.AdminBookingUpdate(st)))
+	mux.Handle("GET /admin/inquiries", protected(handler.AdminInquiries(st)))
+	mux.Handle("GET /admin/inquiries/{id}", protected(handler.AdminInquiryRow(st)))
+	mux.Handle("GET /admin/inquiries/{id}/edit", protected(handler.AdminInquiryEdit(st)))
+	mux.Handle("POST /admin/inquiries/{id}", protected(handler.AdminInquiryUpdate(st)))
+	mux.Handle("GET /admin/waitlist", protected(handler.AdminWaitlist(st)))
+	mux.Handle("GET /admin/waitlist/{id}", protected(handler.AdminWaitlistRow(st)))
+	mux.Handle("GET /admin/waitlist/{id}/edit", protected(handler.AdminWaitlistEdit(st)))
+	mux.Handle("POST /admin/waitlist/{id}", protected(handler.AdminWaitlistUpdate(st)))
 
 	// Branded 404 for any unmatched GET path
 	mux.Handle("GET /", handler.NotFound())
