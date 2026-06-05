@@ -58,6 +58,52 @@ func (s *Store) UpdateWaitlistStatus(ctx context.Context, id int64, status, admi
 	return err
 }
 
+// ListBookingsScheduledBetween returns bookings whose scheduled_date falls in
+// [start, end) (YYYY-MM-DD strings; lexicographic compare works for ISO dates).
+// Used to populate the calendar grid for a visible month window.
+func (s *Store) ListBookingsScheduledBetween(ctx context.Context, start, end string) ([]Booking, error) {
+	rows, err := s.db.QueryContext(ctx,
+		"SELECT "+bookingColumns+" FROM bookings WHERE scheduled_date >= ? AND scheduled_date < ? ORDER BY scheduled_date, created_at",
+		start, end,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Booking
+	for rows.Next() {
+		var b Booking
+		if err := scanBooking(rows, &b); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// ListUnscheduledBookings returns active bookings with no scheduled date — the
+// ones that still need placing on the calendar (excludes canceled/delivered).
+func (s *Store) ListUnscheduledBookings(ctx context.Context) ([]Booking, error) {
+	rows, err := s.db.QueryContext(ctx,
+		"SELECT "+bookingColumns+" FROM bookings WHERE scheduled_date = '' AND status NOT IN ('canceled','delivered') ORDER BY created_at",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Booking
+	for rows.Next() {
+		var b Booking
+		if err := scanBooking(rows, &b); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
 // countableTables whitelists the tables CountByStatus may query (the table name
 // can't be a bound parameter, so it must never come from user input).
 var countableTables = map[string]bool{"bookings": true, "questions": true, "waitlist": true}

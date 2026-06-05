@@ -86,13 +86,13 @@ templ adminSidebarInner(active string) {
 			@adminNavItem("/admin/inquiries", "inquiries", active, "Inquiries") {
 				@iconMessage("h-[18px] w-[18px]")
 			}
+			@adminNavItem("/admin/calendar", "calendar", active, "Calendar") {
+				@iconClock("h-[18px] w-[18px]")
+			}
 			@adminNavItem("/admin/waitlist", "waitlist", active, "Waitlist") {
 				@iconMapPin("h-[18px] w-[18px]")
 			}
 			<div class="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">Soon</div>
-			@adminNavSoon("Calendar") {
-				@iconClock("h-[18px] w-[18px]")
-			}
 			@adminNavSoon("Settings") {
 				@iconSparkle("h-[18px] w-[18px]")
 			}

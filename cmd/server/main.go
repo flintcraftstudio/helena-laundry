@@ -130,6 +130,9 @@ func main() {
 	// Admin dashboard (all routes gated by RequireAuth -> /login).
 	protected := func(h http.Handler) http.Handler { return session.RequireAuth(h) }
 	mux.Handle("GET /admin", protected(handler.AdminDashboard(st)))
+	mux.Handle("GET /admin/calendar", protected(handler.AdminCalendar(st)))
+	mux.Handle("GET /admin/calendar/pickup/{id}", protected(handler.AdminCalendarPickup(st)))
+	mux.Handle("POST /admin/calendar/pickup/{id}", protected(handler.AdminCalendarPickupUpdate(st)))
 	mux.Handle("GET /admin/bookings", protected(handler.AdminBookings(st)))
 	mux.Handle("GET /admin/bookings/{id}", protected(handler.AdminBookingRow(st)))
 	mux.Handle("GET /admin/bookings/{id}/edit", protected(handler.AdminBookingEdit(st)))
