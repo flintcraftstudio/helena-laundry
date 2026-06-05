@@ -9,13 +9,13 @@ templ BusinessesPage() {
 }
 
 templ businessesContent() {
-	<!-- Hero -->
+	<!-- ============ Hero ============ -->
 	<section class="bg-hl-cream">
-		<div class="mx-auto max-w-content px-5 pt-16 pb-10 sm:px-8 sm:pt-20">
+		<div class="mx-auto max-w-content px-5 pt-16 pb-12 sm:px-8 sm:pt-24 sm:pb-16">
 			<div class="max-w-3xl">
 				@eyebrow("For businesses")
-				<h1 class="font-display text-[clamp(2.4rem,5vw,3.7rem)] leading-[1.05] text-hl-brown">Laundry your business can count on.</h1>
-				<p class="mt-6 max-w-2xl text-[19px] leading-relaxed text-hl-brown-soft">
+				<h1 class="font-display text-display-xl text-hl-brown">Laundry your business can count on.</h1>
+				<p class="mt-6 max-w-2xl text-lg text-hl-brown-soft">
 					If your week runs on clean towels and linens, you already know what it costs you when they're not ready. I take that off your plate — picked up on a schedule you set, back when I said it'd be back.
 				</p>
 				<div class="mt-8">
@@ -24,47 +24,42 @@ templ businessesContent() {
 			</div>
 		</div>
 	</section>
-
-	<!-- Who this is for -->
+	<!-- ============ Who this is for (editorial index, not a card grid) ============ -->
 	<section class="border-y border-hl-brown/10 bg-hl-tint">
-		<div class="mx-auto max-w-content px-5 py-18 sm:px-8 sm:py-20">
-			<div class="max-w-2xl">
-				@eyebrow("Who this is for")
-				<h2 class="font-display text-[clamp(1.9rem,3.6vw,2.6rem)] leading-tight text-hl-brown">Anybody with a standing pile and no time to deal with it.</h2>
-			</div>
-			<div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-				@audienceCard("Salons & barbershops", "Going through towels by the armful.") {
-					@iconScissors("h-6 w-6")
+		<div class="mx-auto max-w-content px-5 py-16 sm:px-8 sm:py-20">
+			<h2 class="max-w-2xl font-display text-display-lg text-hl-brown">Anybody with a standing pile and no time to deal with it.</h2>
+			<div class="mt-12 grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-4">
+				@audienceItem("Salons & barbershops", "Going through towels by the armful.") {
+					@iconScissors("h-7 w-7")
 				}
-				@audienceCard("Spas & massage therapists", "Sheets and wraps to turn over.") {
-					@iconSparkle("h-6 w-6")
+				@audienceItem("Spas & massage therapists", "Sheets and wraps to turn over.") {
+					@iconSparkle("h-7 w-7")
 				}
-				@audienceCard("Rentals & Airbnb hosts", "Flipping linens between guests.") {
-					@iconHome("h-6 w-6")
+				@audienceItem("Rentals & Airbnb hosts", "Flipping linens between guests.") {
+					@iconHome("h-7 w-7")
 				}
-				@audienceCard("Gyms, studios & clinics", "Standing piles, every week.") {
-					@iconDumbbell("h-6 w-6")
+				@audienceItem("Gyms, studios & clinics", "Standing piles, every week.") {
+					@iconDumbbell("h-7 w-7")
 				}
 			</div>
 		</div>
 	</section>
-
-	<!-- How it works for a business -->
+	<!-- ============ How it works for a business ============ -->
 	<section class="bg-hl-cream">
-		<div class="mx-auto max-w-content px-5 py-18 sm:px-8 sm:py-20">
+		<div class="mx-auto max-w-content px-5 py-20 sm:px-8 sm:py-28">
 			<div class="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
 				<div>
 					@eyebrow("How it works for a business")
-					<h2 class="font-display text-[clamp(1.9rem,3.6vw,2.6rem)] leading-tight text-hl-brown">Same as anyone else, just steadier.</h2>
+					<h2 class="font-display text-display-lg text-hl-brown">Same as anyone else, just steadier.</h2>
 				</div>
-				<div class="space-y-5 text-[17px] leading-relaxed text-hl-brown-soft">
+				<div class="space-y-5 text-lg text-hl-brown-soft">
 					<p>
 						We set a standing pickup day — or a couple a week if your volume needs it. I pick up, wash, dry, fold, and have it back on schedule. The bulky, high-volume stuff like towels and rags runs on flat rates, so your costs are predictable and there's nothing to puzzle over at month's end.
 					</p>
 					<div class="rounded-2xl border border-hl-rust/25 bg-hl-tint p-6 shadow-hl-sm">
 						<div class="flex items-start gap-3.5">
 							@iconHeart("h-6 w-6 shrink-0 text-hl-rust")
-							<p class="text-hl-brown">
+							<p class="text-base text-hl-brown">
 								<span class="font-semibold">One person handles your account, every time.</span> I'll know your order, your preferences, and your turnaround — no rotating crew, no explaining it twice.
 							</p>
 						</div>
@@ -73,58 +68,71 @@ templ businessesContent() {
 			</div>
 		</div>
 	</section>
-
-	<!-- What it costs -->
+	<!-- ============ What it costs (teal band — the peak) ============ -->
 	<section class="bg-hl-teal-deep text-hl-cream">
-		<div class="mx-auto max-w-content px-5 py-18 sm:px-8 sm:py-20">
-			<div class="grid gap-10 lg:grid-cols-2 lg:items-center">
+		<div class="mx-auto max-w-content px-5 py-24 sm:px-8 sm:py-32">
+			<div class="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
 				<div>
-					<p class="text-[13px] font-bold uppercase tracking-caps text-hl-ochre">What it costs</p>
-					<h2 class="mt-4 font-display text-[clamp(1.9rem,3.6vw,2.6rem)] leading-tight text-hl-cream">Predictable rates. No runaround.</h2>
-					<p class="mt-5 text-[17px] leading-relaxed text-hl-cream/85">
+					<p class="text-[13px] font-bold uppercase tracking-caps text-hl-cream/90">What it costs</p>
+					<h2 class="mt-4 font-display text-display-lg text-hl-cream">Predictable rates. No runaround.</h2>
+					<p class="mt-5 text-lg text-hl-cream">
 						A 13-gallon bag of towels, rags, or similar is $35. Linens and everything else run the same rates as my { "" }
-						<a href="/services#pricing" class="font-semibold text-hl-cream underline decoration-hl-ochre underline-offset-4 hover:text-hl-ochre">regular price list</a>
+						<a href="/services#pricing" class="font-semibold text-hl-white underline decoration-hl-ochre underline-offset-4 transition hover:decoration-hl-white">regular price list</a>
 						{ "" } — and if you've got real volume, call me and we'll work out something that makes sense for both of us.
 					</p>
 				</div>
-				<div class="rounded-2xl bg-hl-cream/[0.08] p-7 ring-1 ring-hl-cream/15">
+				<div class="rounded-2xl bg-black/10 p-7 ring-1 ring-hl-cream/15">
 					<div class="flex items-baseline justify-between gap-4 border-b border-hl-cream/15 pb-4">
-						<span class="text-[17px] text-hl-cream">13-gallon bag of towels &amp; rags</span>
-						<span class="shrink-0 font-display text-[32px] text-hl-ochre">$35</span>
+						<span class="text-base text-hl-cream">13-gallon bag of towels &amp; rags</span>
+						<span class="shrink-0 font-display text-3xl text-hl-white">$35</span>
 					</div>
 					<div class="flex items-baseline justify-between gap-4 pt-4">
-						<span class="text-[17px] text-hl-cream">Linens &amp; everything else</span>
-						<span class="shrink-0 text-[15px] text-hl-cream/80">Regular rates</span>
+						<span class="text-base text-hl-cream">Linens &amp; everything else</span>
+						<span class="shrink-0 text-sm text-hl-cream/90">Regular rates</span>
 					</div>
-					<p class="mt-5 text-[14px] leading-relaxed text-hl-cream/70">
+					<p class="mt-5 text-sm text-hl-cream/90">
 						Real volume? We'll work out a flat rate that makes sense for both of us.
 					</p>
 				</div>
 			</div>
 		</div>
 	</section>
-
-	<!-- Let's talk it over -->
-	<section class="bg-hl-cream">
-		<div class="mx-auto max-w-content px-5 py-20 text-center sm:px-8 sm:py-24">
-			<h2 class="mx-auto max-w-2xl font-display text-[clamp(2rem,4.2vw,3.1rem)] leading-tight text-hl-brown">Let's talk it over.</h2>
-			<p class="mx-auto mt-5 max-w-xl text-[18px] leading-relaxed text-hl-brown-soft">
+	<!-- ============ Let's talk it over (rust band close) ============ -->
+	<section class="bg-hl-rust text-hl-white">
+		<div class="mx-auto max-w-content px-5 py-20 text-center sm:px-8 sm:py-28">
+			<h2 class="mx-auto max-w-2xl font-display text-display-xl text-hl-white">Let's talk it over.</h2>
+			<p class="mx-auto mt-5 max-w-xl text-lg text-hl-white/95">
 				Tell me what you go through in a week and I'll tell you exactly what it'll run and how fast you'll get it back. No runaround.
 			</p>
-			<div class="mt-9 flex flex-wrap justify-center gap-3.5">
-				@btnCall("Call or text: " + Phone)
-				@btnGhostIcon("/contact", "Send a note")
+			<div class="mt-9 flex flex-col items-center gap-4">
+				<a
+					href={ templ.SafeURL(PhoneTel) }
+					class="inline-flex items-center gap-2.5 rounded-pill bg-hl-white px-7 py-3.5 text-base font-semibold text-hl-rust-deep transition duration-200 ease-hl-out hover:bg-hl-cream active:scale-[0.97]"
+				>
+					@iconPhone("h-[18px] w-[18px]")
+					Call or text: { Phone }
+				</a>
+				<a
+					href="/contact"
+					class="group inline-flex items-center gap-1.5 text-base font-semibold text-hl-white underline decoration-hl-white/50 underline-offset-4 transition hover:decoration-hl-white"
+				>
+					Rather send a note first?
+					@iconArrowRight("h-4 w-4 transition-transform duration-200 ease-hl-out group-hover:translate-x-0.5")
+				</a>
 			</div>
 		</div>
 	</section>
 }
 
-templ audienceCard(title, body string) {
-	<div class="rounded-2xl border border-hl-brown/10 bg-hl-white p-6 shadow-hl-sm">
-		<span class="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-hl-rust/10 text-hl-rust">
+// audienceItem is one entry in the "who this is for" index — a top hairline,
+// teal icon, label, and one line. Lighter than a boxed card so the four read as
+// an editorial row, not a templated grid.
+templ audienceItem(title, body string) {
+	<div class="border-t border-hl-brown/15 pt-5">
+		<span class="text-hl-teal-deep">
 			{ children... }
 		</span>
-		<h3 class="font-display text-[20px] leading-snug text-hl-brown">{ title }</h3>
-		<p class="mt-2 text-[14px] leading-relaxed text-hl-brown-soft">{ body }</p>
+		<h3 class="mt-4 font-display text-xl leading-snug text-hl-brown">{ title }</h3>
+		<p class="mt-1.5 text-sm text-hl-brown-soft">{ body }</p>
 	</div>
 }
