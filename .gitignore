@@ -44,3 +44,7 @@ data/
 
 # sqlc generated code
 internal/db/
+
+# Brand source assets / reference kit (kept out of git history)
+/helena_laundry_logo.png
+/Helena Laundry Design System/
