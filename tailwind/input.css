@@ -1,12 +1,77 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 88px; /* clears the sticky nav on anchor jumps */
+  }
+
+  body {
+    background: #F2EBD8;
+    color: #3A2A1E;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Display headings: DM Serif Display, tight, balanced */
+  h1, h2, h3, .font-display {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
   ::selection {
-    background: rgba(91, 126, 196, 0.35);
-    color: #edf0f7;
+    background: rgba(192, 73, 43, 0.22);
+    color: #3A2A1E;
+  }
+
+  :focus-visible {
+    outline: 2px solid #C0492B;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  /* Eyebrow / small-caps label — a recurring brand device.
+     teal-deep (not teal) clears WCAG AA contrast on cream at this size. */
+  .eyebrow {
+    @apply text-[13px] font-bold uppercase tracking-caps text-hl-teal-deep;
+  }
+
+  /* Active nav link — rust-deep with a grounded underline. */
+  .nav-active {
+    @apply text-hl-rust-deep;
+    text-decoration: underline;
+    text-decoration-color: #A23B22;
+    text-underline-offset: 6px;
+    text-decoration-thickness: 2px;
+  }
+
+  /* Twin border-rule echoing the badge's double ring */
+  .rule-double {
+    position: relative;
+    height: 7px;
+    border-top: 2px solid #C0492B;
+  }
+  .rule-double::after {
+    content: "";
+    position: absolute;
+    inset: 4px 0 auto 0;
+    border-top: 1px solid #C0492B;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

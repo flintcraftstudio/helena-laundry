@@ -1,0 +1,183 @@
+/* ============================================================
+   HELENA LAUNDRY — Colors & Type Foundation
+   Warm, friendly, vintage-Americana with clean modern execution.
+   Import this file, then use the CSS vars + semantic classes.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+:root {
+  /* ---- Brand palette (raw) ---- */
+  --cream:        #F2EBD8; /* primary background, warm + soft */
+  --cream-deep:   #EAE0C7; /* slightly deeper cream for alt bands / insets */
+  --rust:         #C0492B; /* primary accent: buttons, links, key headings */
+  --rust-deep:    #A23B22; /* rust hover / pressed */
+  --teal:         #3E7E8C; /* secondary accent: highlights, icons, alt sections */
+  --teal-deep:    #336774; /* teal hover / pressed */
+  --ochre:        #D99A3D; /* tertiary pop: badges, tags, stars */
+  --ochre-deep:   #C2862C;
+  --brown:        #3A2A1E; /* ALL body text + linework. Never pure black. */
+  --brown-soft:   #6B5848; /* muted/secondary text */
+  --brown-faint:  #9A8A78; /* tertiary text, captions, placeholders */
+  --white:        #FFFFFF; /* cards/panels that lift off the cream */
+
+  /* ---- Semantic surfaces ---- */
+  --bg:           var(--cream);
+  --bg-alt:       var(--cream-deep);
+  --surface:      var(--white);
+  --surface-tint: #FBF7EC; /* near-white warm card */
+
+  /* ---- Semantic text ---- */
+  --fg1:          var(--brown);      /* primary text */
+  --fg2:          var(--brown-soft); /* secondary text */
+  --fg3:          var(--brown-faint);/* tertiary / captions */
+  --fg-on-rust:   var(--white);      /* text on rust surfaces (white for contrast) */
+  --fg-on-teal:   var(--white);      /* text on teal surfaces (use teal-deep bg for AA) */
+
+  /* ---- Accents (semantic) ---- */
+  --accent:        var(--rust);
+  --accent-hover:  var(--rust-deep);
+  --accent-2:      var(--teal);
+  --accent-2-hover:var(--teal-deep);
+  --accent-3:      var(--ochre);
+  --link:          var(--rust);
+  --link-hover:    var(--rust-deep);
+
+  /* ---- Lines / borders (echo the badge's ring) ---- */
+  --rule:         color-mix(in oklab, var(--brown) 18%, transparent);
+  --rule-strong:  color-mix(in oklab, var(--brown) 32%, transparent);
+  --ring-rust:    var(--rust);
+  --ring-brown:   var(--brown);
+
+  /* ---- Type families ---- */
+  --font-display: "DM Serif Display", Georgia, "Times New Roman", serif;
+  --font-sans:    "DM Sans", "Helvetica Neue", Arial, sans-serif;
+
+  /* ---- Type scale (clamped, fluid) ---- */
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.375rem;  /* 22px */
+  --text-2xl:  1.75rem;   /* 28px */
+  --text-3xl:  2.25rem;   /* 36px */
+  --text-4xl:  3rem;      /* 48px */
+  --text-5xl:  clamp(3rem, 6vw, 4.5rem);   /* hero */
+  --text-6xl:  clamp(3.75rem, 8vw, 6rem);  /* display hero */
+
+  /* ---- Line heights ---- */
+  --lh-tight:   1.1;
+  --lh-snug:    1.25;
+  --lh-normal:  1.6;   /* generous body spacing */
+  --lh-relaxed: 1.75;
+
+  /* ---- Letter spacing ---- */
+  --tracking-tight:  -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.04em;
+  --tracking-caps:   0.14em; /* small-caps eyebrows */
+
+  /* ---- Radii (soft, rounded) ---- */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-pill: 999px;
+
+  /* ---- Spacing scale ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
+
+  /* ---- Soft, warm shadows (never harsh, brown-tinted) ---- */
+  --shadow-xs: 0 1px 2px rgba(58,42,30,0.06);
+  --shadow-sm: 0 2px 6px rgba(58,42,30,0.08);
+  --shadow-md: 0 6px 18px rgba(58,42,30,0.10);
+  --shadow-lg: 0 16px 40px rgba(58,42,30,0.12);
+  --shadow-rust: 0 8px 22px rgba(192,73,43,0.22);
+
+  /* ---- Motion ---- */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft:  cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:   140ms;
+  --dur-med:    240ms;
+  --dur-slow:   420ms;
+}
+
+/* ============================================================
+   BASE / SEMANTIC ELEMENTS
+   ============================================================ */
+body {
+  background: var(--bg);
+  color: var(--fg1);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--fg1);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--text-5xl); }
+h2 { font-size: var(--text-3xl); }
+h3 { font-size: var(--text-2xl); }
+
+h4, h5, h6 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: var(--fg1);
+  line-height: var(--lh-snug);
+}
+h4 { font-size: var(--text-xl); }
+h5 { font-size: var(--text-lg); }
+h6 { font-size: var(--text-base); }
+
+p { line-height: var(--lh-normal); text-wrap: pretty; }
+
+a { color: var(--link); text-decoration-color: color-mix(in oklab, var(--link) 40%, transparent); text-underline-offset: 3px; }
+a:hover { color: var(--link-hover); }
+
+/* Eyebrow / small-caps label — a recurring brand device */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--teal);
+}
+
+/* Display heading in rust — the "key heading" treatment */
+.heading-accent { color: var(--rust); }
+
+.lead { font-size: var(--text-lg); color: var(--fg2); line-height: var(--lh-relaxed); }
+.caption { font-size: var(--text-sm); color: var(--fg3); }
+
+/* Thin double-ring rule echoing the badge border */
+.rule-double {
+  border: none;
+  border-top: 2px solid var(--rust);
+  position: relative;
+  height: 6px;
+}
+.rule-double::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 4px;
+  border-top: 1px solid var(--rust);
+}

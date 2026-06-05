@@ -104,14 +104,23 @@ func main() {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
 	// Pages
-	mux.Handle("GET /", handler.Home())
+	mux.Handle("GET /{$}", handler.Home())
+	mux.Handle("GET /services", handler.Services())
+	mux.Handle("GET /about", handler.About())
+	mux.Handle("GET /businesses", handler.Businesses())
 	mux.Handle("GET /contact", handler.Contact())
-	mux.Handle("POST /contact", handler.ContactSubmit(mailer, cfg.TurnstileSecretKey))
+
+	// Contact forms (two deliberately distinct capture paths)
+	mux.Handle("POST /contact/question", handler.QuestionSubmit(st, mailer, cfg.TurnstileSecretKey))
+	mux.Handle("POST /contact/waitlist", handler.WaitlistSubmit(st, mailer, cfg.TurnstileSecretKey))
 
 	// Auth
 	mux.Handle("GET /login", handler.LoginPage())
 	mux.Handle("POST /login", handler.LoginSubmit(st))
 	mux.Handle("POST /logout", handler.Logout(st))
+
+	// Branded 404 for any unmatched GET path
+	mux.Handle("GET /", handler.NotFound())
 
 	// Session + logging middleware
 	srv := session.Middleware(st)(mux)

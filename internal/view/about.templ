@@ -1,0 +1,91 @@
+package view
+
+templ AboutPage() {
+	@Base(
+		"About",
+		"Hi, I'm Chanté. I grew up in Kalispell, settled in Helena, and built an honest business around something people actually need. I'll treat your laundry like it's my own family's.",
+		aboutContent(),
+	)
+}
+
+templ aboutContent() {
+	<!-- Intro -->
+	<section class="bg-hl-cream">
+		<div class="mx-auto max-w-content px-5 pt-16 pb-10 sm:px-8 sm:pt-20">
+			<div class="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
+				<div class="order-2 lg:order-1">
+					@eyebrow("About")
+					<h1 class="font-display text-[clamp(2.6rem,5.5vw,4rem)] leading-[1.04] text-hl-brown">Hi, I'm Chanté.</h1>
+					<p class="mt-6 text-[19px] leading-relaxed text-hl-brown-soft">
+						I grew up in Kalispell, which means I grew up knowing what Montana is worth. Then I married an Air Force man, and for a good while I saw the rest of the country whether I meant to or not — base to base, town to town.
+					</p>
+				</div>
+				<div class="order-1 flex justify-center lg:order-2">
+					<div class="relative flex h-[280px] w-[280px] items-center justify-center sm:h-[340px] sm:w-[340px]">
+						<div class="absolute inset-3 rounded-full border-2 border-hl-rust shadow-[inset_0_0_0_5px_#F2EBD8,inset_0_0_0_7px_#C0492B]"></div>
+						<picture>
+							<source srcset="/static/img/badge.webp" type="image/webp"/>
+							<img src="/static/img/badge.png" alt="Helena Laundry badge" width="300" height="300" class="relative h-[78%] w-[78%] drop-shadow-[0_16px_30px_rgba(58,42,30,0.18)]"/>
+						</picture>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Story body -->
+	<section class="bg-hl-cream">
+		<div class="mx-auto max-w-2xl px-5 py-12 sm:px-8">
+			<div class="space-y-6 text-[18px] leading-relaxed text-hl-brown-soft">
+				<p>
+					It was an education. But when the kids came along, my husband and I made a decision on purpose: we were going to raise them as Montanans. So we settled in Helena, and we've been home ever since.
+				</p>
+				<p>
+					I spent years working around animals and the people who love them — first as a veterinary technician, then managing a busy practice. That work teaches you how to run a real operation: keep the books straight, keep your word on the timeline, and never make a person guess what something costs.
+				</p>
+				<div class="my-10">
+					@doubleRule()
+				</div>
+				<p class="font-display text-[24px] leading-snug text-hl-brown">So why laundry? Because it never stops.</p>
+				<p>
+					Everybody needs clean clothes — the overworked mom with three kids and a full-time job, the small shop going through towels by the armful — but not everybody has the time or the convenience to keep up. That's a real need, and Helena could use the help — the kind of help that has to come from someone actually here, not an app or a company three states off. I'd rather build something honest around a thing people actually need than chase something flashier. Laundry it is.
+				</p>
+				<p>
+					When I'm not at the machines, you'll usually find me on a horse, with my nose in a book, or working with the foster community here in town. Kids deserve a soft place to land, and Helena's good at providing it.
+				</p>
+			</div>
+
+			<!-- The promise -->
+			<div class="mt-12 rounded-2xl border border-hl-rust/25 bg-hl-tint p-8 shadow-hl-sm sm:p-10">
+				<p class="text-[13px] font-bold uppercase tracking-caps text-hl-teal">My promise</p>
+				<p class="mt-4 text-[18px] leading-relaxed text-hl-brown">
+					So here's my promise, plain as I can put it.
+				</p>
+				<ul class="mt-5 space-y-3.5">
+					@promiseItem("I'll treat your laundry like it's my own family's.")
+					@promiseItem("I'll tell you the price before you pay it.")
+					@promiseItem("I'll have it back on your porch when I said I would — washed, folded, and done right.")
+				</ul>
+				<p class="mt-7 text-[18px] leading-relaxed text-hl-brown">
+					That's the whole business. I think it's enough.
+				</p>
+				<p class="mt-6 font-display text-[26px] text-hl-rust">— Chanté</p>
+				<p class="text-[14px] text-hl-brown-faint">Helena Laundry · Helena, Montana</p>
+			</div>
+
+			<div class="mt-10 flex flex-wrap gap-3.5">
+				@btnCall("Call or text to schedule a pickup")
+				@btnGhostIcon("/contact", "Send a note")
+			</div>
+		</div>
+	</section>
+}
+
+templ promiseItem(text string) {
+	<li class="flex items-start gap-3 text-[17px] leading-relaxed text-hl-brown-soft">
+		<span class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-hl-rust/10 text-hl-rust">
+			@iconCheck("h-3.5 w-3.5")
+		</span>
+		<span>{ text }</span>
+	</li>
+}

@@ -87,3 +87,86 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP")
 	return err
 }
+
+// Question is a question/feedback submission from the contact form.
+type Question struct {
+	ID        int64
+	Name      string
+	Contact   string
+	Topic     string
+	Message   string
+	CreatedAt time.Time
+}
+
+// CreateQuestion stores a question/feedback submission.
+func (s *Store) CreateQuestion(ctx context.Context, name, contact, topic, message string) error {
+	_, err := s.db.ExecContext(ctx,
+		"INSERT INTO questions (name, contact, topic, message) VALUES (?, ?, ?, ?)",
+		name, contact, topic, message,
+	)
+	return err
+}
+
+// ListQuestions returns the most recent question submissions, newest first.
+func (s *Store) ListQuestions(ctx context.Context, limit int) ([]Question, error) {
+	rows, err := s.db.QueryContext(ctx,
+		"SELECT id, name, contact, topic, message, created_at FROM questions ORDER BY created_at DESC LIMIT ?",
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Question
+	for rows.Next() {
+		var q Question
+		if err := rows.Scan(&q.ID, &q.Name, &q.Contact, &q.Topic, &q.Message, &q.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, q)
+	}
+	return out, rows.Err()
+}
+
+// WaitlistEntry is an out-of-area waitlist signup.
+type WaitlistEntry struct {
+	ID        int64
+	Name      string
+	Location  string
+	Contact   string
+	Kind      string
+	Notes     string
+	CreatedAt time.Time
+}
+
+// CreateWaitlistEntry stores an out-of-area waitlist signup.
+func (s *Store) CreateWaitlistEntry(ctx context.Context, name, location, contact, kind, notes string) error {
+	_, err := s.db.ExecContext(ctx,
+		"INSERT INTO waitlist (name, location, contact, kind, notes) VALUES (?, ?, ?, ?, ?)",
+		name, location, contact, kind, notes,
+	)
+	return err
+}
+
+// ListWaitlist returns waitlist signups, newest first.
+func (s *Store) ListWaitlist(ctx context.Context, limit int) ([]WaitlistEntry, error) {
+	rows, err := s.db.QueryContext(ctx,
+		"SELECT id, name, location, contact, kind, notes, created_at FROM waitlist ORDER BY created_at DESC LIMIT ?",
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []WaitlistEntry
+	for rows.Next() {
+		var e WaitlistEntry
+		if err := rows.Scan(&e.ID, &e.Name, &e.Location, &e.Contact, &e.Kind, &e.Notes, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}

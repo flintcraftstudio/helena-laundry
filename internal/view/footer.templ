@@ -3,10 +3,47 @@ package view
 import "fmt"
 
 templ Footer() {
-	<footer class="border-t border-ff-border">
-		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-8 text-[13px] text-ff-stone sm:px-12">
-			<p>&copy; { fmt.Sprint(Year()) } { SiteName }</p>
-			<p class="text-ff-ash">fireflysoftware.dev</p>
+	<footer class="border-t border-hl-brown/10 bg-hl-cream-deep">
+		<div class="mx-auto max-w-content px-5 py-14 sm:px-8">
+			<div class="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
+				<!-- Brand + sign-off -->
+				<div class="max-w-sm">
+					<div class="flex items-center gap-3">
+						<picture>
+							<source srcset="/static/img/badge-sm.webp" type="image/webp"/>
+							<img src="/static/img/badge-sm.png" alt="" width="48" height="48" class="h-12 w-12 rounded-full"/>
+						</picture>
+						<span class="font-display text-2xl text-hl-brown">Helena Laundry</span>
+					</div>
+					<p class="mt-4 text-[15px] leading-relaxed text-hl-brown-soft">
+						Wash, dry, fold &amp; hang — picked up in Helena, washed in Helena, brought back to your door in Helena. By me. Every time.
+					</p>
+				</div>
+				<!-- Links -->
+				<nav class="grid grid-cols-2 gap-x-12 gap-y-2.5 text-[15px]" aria-label="Footer">
+					@footerLink("/", "Home")
+					@footerLink("/services", "Services & pricing")
+					@footerLink("/about", "About")
+					@footerLink("/businesses", "For businesses")
+					@footerLink("/contact", "Contact")
+					@footerLink("/contact#waitlist", "Out-of-area waitlist")
+				</nav>
+				<!-- Contact -->
+				<div class="text-[15px]">
+					<p class="eyebrow mb-3">Get in touch</p>
+					<a href={ templ.SafeURL(PhoneTel) } class="block font-display text-2xl text-hl-rust transition hover:text-hl-rust-deep">{ Phone }</a>
+					<p class="mt-2 text-hl-brown-soft">Call or text to schedule.</p>
+					<p class="mt-1 text-hl-brown-soft">Most orders back in 24–48 hours.</p>
+				</div>
+			</div>
+			<div class="mt-12 flex flex-col gap-3 border-t border-hl-brown/10 pt-6 text-[13px] text-hl-brown-soft sm:flex-row sm:items-center sm:justify-between">
+				<p>&copy; { fmt.Sprint(Year()) } { SiteName } · { Tagline } · { Phone }</p>
+				<p>Wash-and-fold only — no dry cleaning.</p>
+			</div>
 		</div>
 	</footer>
+}
+
+templ footerLink(href, label string) {
+	<a href={ templ.SafeURL(href) } class="text-hl-brown-soft transition hover:text-hl-rust">{ label }</a>
 }

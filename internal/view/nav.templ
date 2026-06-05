@@ -1,16 +1,92 @@
 package view
 
 templ Nav() {
-	<nav class="border-b border-ff-border bg-[#0f1117eb] backdrop-blur-[12px]">
-		<div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 sm:px-12">
-			<a href="/" class="text-[15px] font-normal tracking-tight text-ff-cream">{ SiteName }</a>
-			<div class="flex items-center gap-8 text-[12px] font-medium uppercase tracking-[0.08em]">
-				<a href="/" class="text-ff-ash transition hover:text-ff-cream">Home</a>
+	<header
+		x-data="{ open: false }"
+		class="sticky top-0 z-40 border-b border-hl-brown/10 bg-hl-cream/85 backdrop-blur-md"
+	>
+		<div class="mx-auto flex max-w-content items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
+			<!-- Brand -->
+			<a href="/" class="flex items-center gap-3" aria-label={ SiteName + " home" }>
+				<picture>
+					<source srcset="/static/img/badge-sm.webp" type="image/webp"/>
+					<img src="/static/img/badge-sm.png" alt="" width="44" height="44" class="h-11 w-11 rounded-full"/>
+				</picture>
+				<span class="font-display text-[22px] leading-none text-hl-brown">Helena Laundry</span>
+			</a>
+			<!-- Desktop nav -->
+			<nav class="hidden items-center gap-7 lg:flex" aria-label="Primary">
+				@navLink("/", "Home")
+				@navLink("/services", "Services & pricing")
+				@navLink("/about", "About")
+				@navLink("/businesses", "For businesses")
+				@navLink("/contact", "Contact")
 				<a
-					href="/contact"
-					class="rounded-sm border border-ff-dusk-lo px-4 py-2 text-ff-ice transition hover:border-ff-dusk hover:bg-ff-dusk-lo hover:text-ff-paper"
-				>Contact</a>
-			</div>
+					href={ templ.SafeURL(PhoneTel) }
+					class="inline-flex items-center gap-2 rounded-pill bg-hl-rust px-5 py-2.5 text-sm font-semibold text-hl-white shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep active:scale-[0.97]"
+				>
+					@iconPhone("h-4 w-4")
+					{ Phone }
+				</a>
+			</nav>
+			<!-- Mobile toggle -->
+			<button
+				type="button"
+				@click="open = !open"
+				class="inline-flex h-10 w-10 items-center justify-center rounded-pill text-hl-brown lg:hidden"
+				:aria-expanded="open"
+				aria-label="Toggle menu"
+			>
+				<svg x-show="!open" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+				<svg x-show="open" x-cloak class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+			</button>
 		</div>
-	</nav>
+		<!-- Mobile menu -->
+		<nav
+			x-show="open"
+			x-cloak
+			x-transition.opacity
+			class="border-t border-hl-brown/10 bg-hl-cream px-5 py-4 lg:hidden"
+			aria-label="Mobile"
+		>
+			<div class="flex flex-col gap-1">
+				@navLinkMobile("/", "Home")
+				@navLinkMobile("/services", "Services & pricing")
+				@navLinkMobile("/about", "About")
+				@navLinkMobile("/businesses", "For businesses")
+				@navLinkMobile("/contact", "Contact")
+				<a
+					href={ templ.SafeURL(PhoneTel) }
+					class="mt-3 inline-flex items-center justify-center gap-2 rounded-pill bg-hl-rust px-5 py-3 text-[15px] font-semibold text-hl-white"
+				>
+					@iconPhone("h-[18px] w-[18px]")
+					Call or text { Phone }
+				</a>
+			</div>
+		</nav>
+	</header>
+	<style>
+		[x-cloak] { display: none !important; }
+	</style>
+	<script>
+		// Mark the nav link for the current page (no server-side path threading).
+		(function () {
+			var here = location.pathname.replace(/\/+$/, "") || "/";
+			document.querySelectorAll("[data-navlink]").forEach(function (a) {
+				var href = (a.getAttribute("href") || "").replace(/\/+$/, "") || "/";
+				if (href === here) {
+					a.setAttribute("aria-current", "page");
+					a.classList.add("nav-active");
+				}
+			});
+		})();
+	</script>
+}
+
+templ navLink(href, label string) {
+	<a href={ templ.SafeURL(href) } data-navlink class="text-[15px] font-medium text-hl-brown-soft transition hover:text-hl-rust-deep">{ label }</a>
+}
+
+templ navLinkMobile(href, label string) {
+	<a href={ templ.SafeURL(href) } data-navlink class="rounded-lg px-2 py-2.5 text-base font-medium text-hl-brown transition hover:bg-hl-cream-deep hover:text-hl-rust-deep">{ label }</a>
 }

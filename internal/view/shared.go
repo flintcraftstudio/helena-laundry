@@ -2,8 +2,19 @@ package view
 
 import "time"
 
-// SiteName is the display name used in templates. Override per-project.
-const SiteName = "Advanced Template"
+// Brand constants for Helena Laundry.
+const (
+	// SiteName is the display name used in titles and the footer.
+	SiteName = "Helena Laundry"
+	// Tagline appears in the footer sign-off line.
+	Tagline = "Helena, Montana · Serving the Helena Valley"
+	// Phone is the single call/text number — the primary CTA everywhere.
+	Phone = "406-471-8508"
+	// PhoneTel is the tel: href form of Phone (E.164, US).
+	PhoneTel = "tel:+14064718508"
+	// PhoneSMS is the sms: href form of Phone.
+	PhoneSMS = "sms:+14064718508"
+)
 
 // Tracking IDs and Turnstile site key, set once at startup from config.
 var (

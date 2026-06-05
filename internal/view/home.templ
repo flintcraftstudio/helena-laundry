@@ -1,89 +1,276 @@
 package view
 
 templ HomePage() {
-	@Base("Home", "Fast, handcrafted websites built with Go and Tailwind CSS.", homeContent())
+	@Base(
+		"Wash, dry, fold & hang pickup in Helena",
+		"Helena's wash-and-fold, run by one person who cares how your towels come out. Leave it on the porch — I do the rest. $2/lb, 24–48 hour turnaround across the Helena Valley.",
+		homeContent(),
+	)
 }
 
 templ homeContent() {
-	<!-- Hero -->
-	<section class="relative overflow-hidden py-24 sm:py-32">
-		<div class="mx-auto max-w-5xl px-6 sm:px-12">
-			<p class="mb-4 text-[11px] font-medium uppercase tracking-[0.2em] text-ff-dusk">Client Name</p>
-			<h1 class="max-w-2xl font-display text-[42px] font-medium leading-tight tracking-tight text-ff-paper sm:text-[68px] sm:leading-[1.05]">
-				A headline that says something&nbsp;memorable.
-			</h1>
-			<p class="mt-6 max-w-xl text-[15px] font-light leading-relaxed text-ff-ash">
-				Replace this with a short paragraph about the client. Keep it to two or three sentences that explain what they do and why visitors should care.
+	<!-- ============ Hero ============ -->
+	<section class="overflow-hidden bg-hl-cream">
+		<div class="mx-auto grid max-w-content items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:py-24">
+			<div>
+				@eyebrow("Wash · Fold · Deliver")
+				<h1 class="font-display text-hero text-hl-brown">
+					Clean clothes, folded right, <span class="text-hl-rust-deep">back on your porch.</span>
+				</h1>
+				<p class="mt-6 max-w-[46ch] text-lg text-hl-brown-soft">
+					Helena's wash-and-fold, run by one person who actually cares how your towels come out. You leave it on the porch. I do the rest.
+				</p>
+				<div class="mt-8 flex flex-wrap gap-3.5">
+					@btnCall("Call or text to book a pickup")
+					@btnGhostIcon("/contact", "Questions? Send a note")
+				</div>
+				<div class="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-[15px] font-medium text-hl-brown-soft">
+					@heroStat("$2/lb")
+					<span class="h-4 w-px bg-hl-brown/20"></span>
+					@heroStat("24–48 hour turnaround")
+					<span class="h-4 w-px bg-hl-brown/20"></span>
+					@heroStat("Serving the Helena Valley")
+				</div>
+			</div>
+			<!-- Badge medallion -->
+			<div class="relative flex justify-center lg:justify-end">
+				<div class="relative flex h-[300px] w-[300px] items-center justify-center sm:h-[360px] sm:w-[360px]">
+					<div class="absolute inset-3 rounded-full border-2 border-hl-rust shadow-[inset_0_0_0_5px_#F2EBD8,inset_0_0_0_7px_#C0492B]"></div>
+					<picture>
+						<source srcset="/static/img/badge.webp" type="image/webp"/>
+						<img
+							src="/static/img/badge.png"
+							alt="Helena Laundry badge — an auburn-haired woman in a floral headscarf, flexing"
+							width="330"
+							height="330"
+							fetchpriority="high"
+							class="relative h-[78%] w-[78%] drop-shadow-[0_16px_30px_rgba(58,42,30,0.18)]"
+						/>
+					</picture>
+					<div class="absolute bottom-3 right-1 flex max-w-[60%] items-center gap-2 rounded-pill bg-hl-white px-4 py-2.5 text-sm font-semibold text-hl-brown shadow-hl-md sm:right-4">
+						@iconTruck("h-[18px] w-[18px] shrink-0 text-hl-teal-deep")
+						No need to be home
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- ============ How it works (numbered flow, not a card grid) ============ -->
+	<section class="border-y border-hl-brown/10 bg-hl-tint">
+		<div class="mx-auto max-w-content px-5 py-16 sm:px-8 sm:py-20">
+			<h2 class="max-w-2xl font-display text-display-lg text-hl-brown">Three steps. That's the whole thing.</h2>
+			<ol class="mt-12 grid gap-x-8 gap-y-11 md:grid-cols-3">
+				@step("1", false, "Set it out.", "Bag up your laundry and leave it on the porch at your pickup time. No need to be home. No need to sort it — that's my job.") {
+					@iconBag("h-[22px] w-[22px]")
+				}
+				@step("2", false, "I take it from there.", "I pick it up, bring it to my place, and sort, wash, dry, fold, and hang what needs hanging. Your clothes get their own load — never mixed in with anyone else's.") {
+					@iconWasher("h-[22px] w-[22px]")
+				}
+				@step("3", true, "Back where it started.", "Clean, folded, and organized in clear bags on your porch, ready to put away. Most orders are back in 24 to 48 hours.") {
+					@iconHome("h-[22px] w-[22px]")
+				}
+			</ol>
+		</div>
+	</section>
+	<!-- ============ What it costs ============ -->
+	<section class="bg-hl-cream">
+		<div class="mx-auto max-w-content px-5 py-20 sm:px-8 sm:py-28">
+			<div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+				<div>
+					<h2 class="font-display text-display-lg text-hl-brown">No mystery, no surprises.</h2>
+					<p class="mt-5 max-w-md text-lg text-hl-brown-soft">
+						Here's the short version. The full list — bedding, sneakers, bulk towels — lives on the { "" }
+						@inlineLink("/services#pricing", "pricing page")
+						.
+					</p>
+					<div class="mt-7">
+						@textLink("/services#pricing", "See the full price list")
+					</div>
+				</div>
+				<div class="space-y-4">
+					@priceCard("Wash, dry, fold & hang", "$2.00", "/lb", "For reference, a stuffed 13-gallon trash bag runs about $30. I won't know the exact number until it's on the scale, and I'll tell you the second I do.", true)
+					@priceCard("Need it fast?", "$3.00", "/lb", "Rush service, back in 24 hours or less.", false)
+					<div class="flex items-center gap-3 rounded-2xl border border-hl-brown/10 bg-hl-cream-deep px-6 py-4 text-[15px] text-hl-brown-soft">
+						@iconCheck("h-5 w-5 shrink-0 text-hl-teal-deep")
+						<span><span class="font-semibold text-hl-brown">Minimum order: $35</span> — about one full trash bag.</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- ============ Some things can't be outsourced (bold teal band — the peak) ============ -->
+	<section class="bg-hl-teal-deep text-hl-cream">
+		<div class="mx-auto max-w-content px-5 py-24 sm:px-8 sm:py-32">
+			<div class="max-w-3xl">
+				<p class="text-[13px] font-bold uppercase tracking-caps text-hl-cream/90">Done here, by hand</p>
+				<h2 class="mt-4 font-display text-display-xl text-hl-cream">Some things can't be outsourced.</h2>
+				<div class="mt-7 space-y-5 text-lg text-hl-cream">
+					<p>
+						There's a lot of talk these days about what machines and far-off companies can do for you. Here's what they can't: your laundry.
+					</p>
+					<p>
+						No app three states away is going to drive to your porch. No computer's going to treat a stain or fold a fitted sheet like it means it. This is hands-on, done-here work — picked up in Helena, washed in Helena, brought back to your door in Helena. <span class="font-medium text-hl-white">By me. Every time.</span>
+					</p>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- ============ For businesses teaser ============ -->
+	<section class="bg-hl-cream">
+		<div class="mx-auto max-w-content px-5 py-16 sm:px-8 sm:py-20">
+			<div class="overflow-hidden rounded-2xl border border-hl-brown/10 bg-hl-tint shadow-hl-sm">
+				<div class="grid gap-8 p-8 sm:p-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+					<div>
+						@eyebrow("For businesses")
+						<h2 class="font-display text-display-lg text-hl-brown">Going through towels by the armful?</h2>
+						<p class="mt-5 max-w-xl text-lg text-hl-brown-soft">
+							Salons, spas, short-term rentals, the gym down the street — let's set up something steady. Standing pickups, flat rates on the bulk stuff, and one person who knows your order and gets it back on time.
+						</p>
+						<div class="mt-7">
+							@textLink("/businesses", "See business service")
+						</div>
+					</div>
+					<div class="flex flex-wrap gap-3 lg:justify-end">
+						@chip("Salons & spas") {
+							@iconScissors("h-4 w-4 text-hl-teal-deep")
+						}
+						@chip("Short-term rentals") {
+							@iconHome("h-4 w-4 text-hl-teal-deep")
+						}
+						@chip("Gyms & studios") {
+							@iconDumbbell("h-4 w-4 text-hl-teal-deep")
+						}
+						@chip("Standing pickups") {
+							@iconClock("h-4 w-4 text-hl-teal-deep")
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- ============ Waitlist band ============ -->
+	<section class="border-y border-hl-brown/10 bg-hl-cream-deep">
+		<div class="mx-auto max-w-content px-5 py-14 sm:px-8 sm:py-16">
+			<div class="grid items-center gap-8 lg:grid-cols-[1fr_auto]">
+				<div class="max-w-2xl">
+					<div class="mb-4 inline-flex items-center gap-2 text-hl-teal-deep">
+						@iconMapPin("h-5 w-5")
+						<span class="text-[13px] font-bold uppercase tracking-caps">Outside the valley?</span>
+					</div>
+					<h2 class="font-display text-display-lg text-hl-brown">Not in the Helena Valley? Tell me where you are.</h2>
+					<p class="mt-5 text-lg text-hl-brown-soft">
+						Right now I run pickups across the Helena Valley — that's as far as one person can stretch and still do it right. But I'd rather grow on purpose than guess. Put your name down, and when enough folks in one direction raise their hands, that's where I head next.
+					</p>
+				</div>
+				<div class="lg:pl-8">
+					@btnGhost("/contact#waitlist", "Add me to the list")
+				</div>
+			</div>
+		</div>
+	</section>
+	<!-- ============ Done right, or I make it right (trust + guarantee, voice-led) ============ -->
+	<section class="bg-hl-cream">
+		<div class="mx-auto max-w-content px-5 py-16 sm:px-8 sm:py-24">
+			<div class="grid gap-10 lg:grid-cols-[1.25fr_1fr] lg:items-center lg:gap-16">
+				<div>
+					@eyebrow("My promise")
+					<h2 class="font-display text-display-lg text-hl-brown">Done right — or I make it right.</h2>
+					<p class="mt-5 max-w-xl text-lg text-hl-brown-soft">
+						I treat every load like it's my own: sorted by hand, washed on its own, folded the way it ought to be. If something's not right when it lands back on your porch, tell me — I'll fix it. No charge, no runaround.
+					</p>
+				</div>
+				<ul class="space-y-3.5">
+					@credItem("Your own load — never mixed in with anyone else's.")
+					@credItem("One person, start to finish. I pick it up, I wash it, I bring it back.")
+					@credItem("Back in 24–48 hours — and if it'll be longer, I'll tell you why.")
+				</ul>
+			</div>
+		</div>
+	</section>
+	<!-- ============ Ready when you are ============ -->
+	<section class="bg-hl-rust text-hl-white">
+		<div class="mx-auto max-w-content px-5 py-20 text-center sm:px-8 sm:py-28">
+			<h2 class="mx-auto max-w-2xl font-display text-display-xl text-hl-white">Ready when you are.</h2>
+			<p class="mx-auto mt-5 max-w-xl text-lg text-hl-white/95">
+				Set your laundry on the porch and get your evening back. Call or text to book your first pickup — or send a note if you've got a question first.
 			</p>
-			<div class="mt-10 flex flex-wrap gap-4">
-				<a href="/contact" class="rounded-sm bg-ff-dusk px-[26px] py-[13px] text-[12px] font-medium uppercase tracking-[0.12em] text-white transition hover:bg-ff-dusk-hover active:scale-[0.98]">
-					Get in touch
+			<div class="mt-9 flex flex-col items-center gap-4">
+				<a
+					href={ templ.SafeURL(PhoneTel) }
+					class="inline-flex items-center gap-2.5 rounded-pill bg-hl-white px-7 py-3.5 text-base font-semibold text-hl-rust-deep transition duration-200 ease-hl-out hover:bg-hl-cream active:scale-[0.97]"
+				>
+					@iconPhone("h-[18px] w-[18px]")
+					Call or text: { Phone }
 				</a>
-				<a href="#services" class="rounded-sm px-[26px] py-[13px] text-[12px] font-medium uppercase tracking-[0.08em] text-ff-ash transition hover:text-ff-cream">
-					Learn more &gt;
+				<a
+					href="/contact"
+					class="group inline-flex items-center gap-1.5 text-base font-semibold text-hl-white underline decoration-hl-white/50 underline-offset-4 transition hover:decoration-hl-white"
+				>
+					Rather send a note first?
+					@iconArrowRight("h-4 w-4 transition-transform duration-200 ease-hl-out group-hover:translate-x-0.5")
 				</a>
 			</div>
 		</div>
-		<!-- Subtle radial glow -->
-		<div class="pointer-events-none absolute -right-20 -top-[60px] h-[420px] w-[500px] bg-[radial-gradient(at_65%_30%,#1e2d52_0%,#161a24_55%,transparent_80%)]"></div>
 	</section>
+}
 
-	<!-- Stats -->
-	<section class="border-y border-ff-border">
-		<div class="mx-auto grid max-w-5xl grid-cols-2 divide-x divide-ff-border sm:grid-cols-4">
-			@stat("100%", "Uptime SLA")
-			@stat("< 1s", "Page loads")
-			@stat("0", "WordPress dependencies")
-			@stat("24h", "Support response")
+// ---- Home-only helpers ----
+
+templ heroStat(label string) {
+	<span class="inline-flex items-center gap-1.5">
+		@iconCheck("h-4 w-4 text-hl-rust-deep")
+		{ label }
+	</span>
+}
+
+// step renders one item of the "How it works" numbered flow. The big ochre
+// numeral and the hairline that trails it (except on the last step) carry the
+// sequence — no cards, so the section reads as one continuous motion.
+templ step(num string, last bool, title, body string) {
+	<li class="relative">
+		<div class="flex items-center gap-4">
+			<span class="font-display text-[3.25rem] leading-none text-hl-ochre-deep">{ num }</span>
+			if !last {
+				<span class="hidden h-px flex-1 bg-hl-brown/15 md:block" role="presentation"></span>
+			}
 		</div>
-	</section>
-
-	<!-- Services -->
-	<section id="services" class="py-24 sm:py-[80px]">
-		<div class="mx-auto max-w-5xl px-6 sm:px-12">
-			@eyebrow("What we offer")
-			<h2 class="mb-12 font-display text-[36px] font-medium tracking-tight text-ff-paper sm:text-[52px]">Services</h2>
-			<div class="grid gap-6 sm:grid-cols-3">
-				@serviceCard("Websites", "Fast, responsive marketing sites handcrafted with modern tools. No bloated page builders.")
-				@serviceCard("Development", "Custom software built to solve your specific problems, not shoehorned into a template.")
-				@serviceCard("Support", "Ongoing maintenance, updates, and a real person to call when something needs to change.")
-			</div>
+		<div class="mt-5 flex items-center gap-2.5 text-hl-teal-deep">
+			{ children... }
+			<h3 class="font-display text-2xl text-hl-brown">{ title }</h3>
 		</div>
-	</section>
+		<p class="mt-2.5 max-w-sm text-base text-hl-brown-soft">{ body }</p>
+	</li>
+}
 
-	<!-- CTA -->
-	<section class="relative overflow-hidden border-t border-ff-border">
-		<div class="mx-auto max-w-5xl px-6 py-24 text-center sm:px-12 sm:py-[80px]">
-			<h2 class="font-display text-[36px] font-medium tracking-tight text-ff-paper">Ready to start?</h2>
-			<p class="mx-auto mt-4 max-w-md text-ff-ash">
-				Tell us about your project. We'll get back to you within one business day.
+templ priceCard(title, price, unit, body string, primary bool) {
+	<div class={ "rounded-2xl border bg-hl-white p-6 shadow-hl-sm", templ.KV("border-hl-rust/30", primary), templ.KV("border-hl-brown/10", !primary) }>
+		<div class="flex items-baseline justify-between gap-4">
+			<h3 class="font-display text-xl text-hl-brown">{ title }</h3>
+			<p class="shrink-0 font-display text-[30px] leading-none text-hl-rust">
+				{ price }<span class="text-base text-hl-brown-soft">{ unit }</span>
 			</p>
-			<a href="/contact" class="mt-10 inline-block rounded-sm bg-ff-dusk px-[26px] py-[13px] text-[12px] font-medium uppercase tracking-[0.12em] text-white transition hover:bg-ff-dusk-hover active:scale-[0.98]">
-				Start a project
-			</a>
 		</div>
-		<!-- Subtle radial glow -->
-		<div class="pointer-events-none absolute -bottom-20 -left-[60px] h-[380px] w-[480px] bg-[radial-gradient(at_30%_70%,#1e2d52_0%,#161a24_55%,transparent_80%)]"></div>
-	</section>
-}
-
-templ eyebrow(label string) {
-	<div class="mb-6 flex items-center gap-3">
-		<span class="block h-px w-7 bg-ff-dusk"></span>
-		<span class="text-[11px] font-medium uppercase tracking-[0.2em] text-ff-dusk">{ label }</span>
+		<p class="mt-2.5 text-sm text-hl-brown-soft">{ body }</p>
 	</div>
 }
 
-templ stat(value, label string) {
-	<div class="px-6 py-8 text-center">
-		<p class="font-display text-[22px] font-medium text-ff-paper">{ value }</p>
-		<p class="mt-1 text-[13px] text-ff-ash">{ label }</p>
-	</div>
+// credItem is a single voice-led reassurance line in the guarantee section.
+templ credItem(label string) {
+	<li class="flex items-start gap-3">
+		<span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hl-teal/10 text-hl-teal-deep">
+			@iconCheck("h-[15px] w-[15px]")
+		</span>
+		<span class="text-base text-hl-brown">{ label }</span>
+	</li>
 }
 
-templ serviceCard(title, description string) {
-	<div class="rounded border border-ff-border bg-ff-panel p-7 transition hover:border-[#5b7ec452]">
-		<h3 class="mb-2 font-display text-[22px] font-medium text-ff-paper">{ title }</h3>
-		<p class="text-[13px] font-light leading-relaxed text-ff-ash">{ description }</p>
-	</div>
+templ chip(label string) {
+	<span class="inline-flex items-center gap-2 rounded-pill border border-hl-brown/10 bg-hl-white px-4 py-2.5 text-sm font-medium text-hl-brown shadow-hl-sm">
+		{ children... }
+		{ label }
+	</span>
+}
+
+templ inlineLink(href, label string) {
+	<a href={ templ.SafeURL(href) } class="font-semibold text-hl-rust-deep underline decoration-hl-rust-deep/40 underline-offset-4 transition hover:decoration-hl-rust-deep">{ label }</a>
 }

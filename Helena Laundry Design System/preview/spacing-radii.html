@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  body { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; }
+  .sw { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .box { background:var(--surface-tint); border:1px solid var(--rule); }
+  .r-sm { width:90px; height:64px; border-radius:8px; }
+  .r-md { width:90px; height:64px; border-radius:12px; }
+  .r-lg { width:90px; height:64px; border-radius:16px; }
+  .r-xl { width:90px; height:64px; border-radius:24px; }
+  .r-pill { width:120px; height:48px; border-radius:999px; background:var(--rust); border-color:transparent; }
+  .lbl { font-size:12px; color:var(--fg2); font-weight:600; }
+  .sub { font-size:11px; color:var(--fg3); }
+</style></head>
+<body>
+  <div class="sw"><div class="box r-sm"></div><div class="lbl">8px</div><div class="sub">inset / sm</div></div>
+  <div class="sw"><div class="box r-md"></div><div class="lbl">12px</div><div class="sub">md</div></div>
+  <div class="sw"><div class="box r-lg"></div><div class="lbl">16px</div><div class="sub">cards</div></div>
+  <div class="sw"><div class="box r-xl"></div><div class="lbl">24px</div><div class="sub">xl panels</div></div>
+  <div class="sw"><div class="box r-pill"></div><div class="lbl" style="color:var(--rust)">999px</div><div class="sub">pill buttons</div></div>
+</body></html>

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  body { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .btn { font-family:var(--font-sans); font-weight:600; font-size:15px; border-radius:999px; padding:13px 26px; border:1.5px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .primary { background:var(--rust); color:var(--cream); box-shadow:var(--shadow-rust); }
+  .secondary { background:var(--teal); color:var(--cream); }
+  .ghost { background:transparent; color:var(--rust); border-color:var(--rust); }
+  .text { background:transparent; color:var(--rust); padding:13px 8px; }
+  .icon svg { width:18px; height:18px; }
+</style></head>
+<body>
+  <button class="btn primary">Schedule a pickup</button>
+  <button class="btn secondary">See our prices</button>
+  <button class="btn ghost">Learn more</button>
+  <button class="btn text">Sign in →</button>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</body></html>

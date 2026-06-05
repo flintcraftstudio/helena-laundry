@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .sw { display:flex; flex-direction:column; gap:8px; }
+  .pair { display:flex; height:72px; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--rule); }
+  .pair div { flex:1; }
+  .name { font-weight:700; font-size:13px; }
+  .hex { font-size:11px; color:var(--fg3); font-variant-numeric:tabular-nums; }
+</style></head>
+<body>
+  <div class="grid">
+    <div class="sw"><div class="pair"><div style="background:var(--rust)"></div><div style="background:var(--rust-deep)"></div></div><div><div class="name">Rust → deep</div><div class="hex">hover / pressed</div></div></div>
+    <div class="sw"><div class="pair"><div style="background:var(--teal)"></div><div style="background:var(--teal-deep)"></div></div><div><div class="name">Teal → deep</div><div class="hex">hover / pressed</div></div></div>
+    <div class="sw"><div class="pair"><div style="background:var(--ochre)"></div><div style="background:var(--ochre-deep)"></div></div><div><div class="name">Ochre → deep</div><div class="hex">hover / pressed</div></div></div>
+    <div class="sw"><div class="pair"><div style="background:var(--surface-tint)"></div><div style="background:var(--white)"></div></div><div><div class="name">Surfaces</div><div class="hex">tint / white</div></div></div>
+  </div>
+</body></html>
