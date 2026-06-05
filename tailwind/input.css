@@ -67,6 +67,76 @@
   }
 }
 
+/* Hero legibility veil — keeps the left copy AA-legible while revealing as much
+   of the photo as the text allows. Mobile: cream over the upper text block,
+   fading near the badge at the bottom. Desktop: solid cream only behind the left
+   text column, dropping to near-transparent across the right so the photo (and
+   the area behind the badge) reads clearly. */
+.hero-veil {
+  background: linear-gradient(
+    180deg,
+    #F2EBD8 0%,
+    #F2EBD8 56%,
+    rgba(242, 235, 216, 0.78) 76%,
+    rgba(242, 235, 216, 0.40) 100%
+  );
+}
+@media (min-width: 1024px) {
+  .hero-veil {
+    background: linear-gradient(
+      90deg,
+      #F2EBD8 0%,
+      #F2EBD8 40%,
+      rgba(242, 235, 216, 0.82) 50%,
+      rgba(242, 235, 216, 0.30) 62%,
+      rgba(242, 235, 216, 0.06) 76%,
+      rgba(242, 235, 216, 0) 88%
+    );
+  }
+}
+
+/* Hero "blanket on the line" — a decorative cream layer that gently waves over
+   the photo backdrop. Two soft folded-cloth bands drift in opposite directions
+   on offset loops so it shimmers like cloth in a breeze rather than pulsing.
+   PURELY ADDITIVE cream: it only ever lays more warmth over the photo, never
+   less, so it can never drop the hero text below its AA contrast floor. Over the
+   solid-cream left column it is invisible; it only reads over the visible photo.
+   transform + opacity only (GPU-friendly). Auto-stilled by the reduced-motion
+   rule below. */
+.hero-cloth {
+  /* one broad, soft cream swell — not tight bands */
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(242, 235, 216, 0.18) 45%,
+    transparent 92%
+  );
+  animation: hl-cloth-wave 24s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.hero-cloth::before {
+  /* a second broad swell, slower and crossing the other way, for undulation */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    84deg,
+    transparent 8%,
+    rgba(242, 235, 216, 0.12) 55%,
+    transparent 100%
+  );
+  animation: hl-cloth-wave 34s ease-in-out -9s infinite reverse;
+  will-change: transform, opacity;
+}
+
+@keyframes hl-cloth-wave {
+  /* large + slow: the swell drifts well across and gently tilts, like a blanket
+     billowing on the line. scale(1.18) overscans so the wide drift never reveals
+     a hard edge. opacity stays additive (only ever lays more cream). */
+  0%, 100% { opacity: 0.5; transform: translate3d(-7%, -1.5%, 0) skewY(-1.1deg) scale(1.18); }
+  50%      { opacity: 1;   transform: translate3d( 7%,  1.5%, 0) skewY( 1.1deg) scale(1.18); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {

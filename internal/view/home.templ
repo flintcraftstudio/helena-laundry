@@ -10,8 +10,37 @@ templ HomePage() {
 
 templ homeContent() {
 	<!-- ============ Hero ============ -->
-	<section class="overflow-hidden bg-hl-cream">
-		<div class="mx-auto grid max-w-content items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:py-24">
+	<section class="relative isolate overflow-hidden bg-hl-cream">
+		<!-- (a) Warm-graded clothesline backdrop — decorative, full-bleed, LCP image -->
+		<picture class="pointer-events-none absolute inset-0 -z-20">
+			<source
+				type="image/avif"
+				sizes="100vw"
+				srcset="/static/img/hero-clothesline-400.avif 400w, /static/img/hero-clothesline-800.avif 800w, /static/img/hero-clothesline-1200.avif 1200w, /static/img/hero-clothesline-1600.avif 1600w"
+			/>
+			<source
+				type="image/webp"
+				sizes="100vw"
+				srcset="/static/img/hero-clothesline-400.webp 400w, /static/img/hero-clothesline-800.webp 800w, /static/img/hero-clothesline-1200.webp 1200w, /static/img/hero-clothesline-1600.webp 1600w"
+			/>
+			<img
+				src="/static/img/hero-clothesline-1200.jpg"
+				sizes="100vw"
+				srcset="/static/img/hero-clothesline-400.jpg 400w, /static/img/hero-clothesline-800.jpg 800w, /static/img/hero-clothesline-1200.jpg 1200w, /static/img/hero-clothesline-1600.jpg 1600w"
+				alt=""
+				aria-hidden="true"
+				width="1600"
+				height="1067"
+				fetchpriority="high"
+				class="h-full w-full object-cover object-center"
+			/>
+		</picture>
+		<!-- (b) Warm legibility overlay: solid cream veil on mobile, left-anchored gradient on lg -->
+		<div class="hero-veil pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+		<!-- (b2) Decorative "blanket on the line" — additive cream that waves over the photo -->
+		<div class="hero-cloth pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+		<!-- (c) Content, lifted above the backdrop + overlay -->
+		<div class="relative z-10 mx-auto grid max-w-content items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:py-24">
 			<div>
 				@eyebrow("Wash · Fold · Deliver")
 				<h1 class="font-display text-hero text-hl-brown">
@@ -32,10 +61,11 @@ templ homeContent() {
 					@heroStat("Serving the Helena Valley")
 				</div>
 			</div>
-			<!-- Badge medallion -->
+			<!-- Badge medallion — a self-framed emblem; a soft cream halo lifts it off the photo -->
 			<div class="relative flex justify-center lg:justify-end">
 				<div class="relative flex h-[300px] w-[300px] items-center justify-center sm:h-[360px] sm:w-[360px]">
-					<div class="absolute inset-3 rounded-full border-2 border-hl-rust shadow-[inset_0_0_0_5px_#F2EBD8,inset_0_0_0_7px_#C0492B]"></div>
+					<!-- soft blurred cream halo so the medallion reads cleanly over the photo -->
+					<div class="absolute inset-2 rounded-full bg-hl-cream/55 blur-[7px]"></div>
 					<picture>
 						<source srcset="/static/img/badge.webp" type="image/webp"/>
 						<img
@@ -43,8 +73,8 @@ templ homeContent() {
 							alt="Helena Laundry badge — an auburn-haired woman in a floral headscarf, flexing"
 							width="330"
 							height="330"
-							fetchpriority="high"
-							class="relative h-[78%] w-[78%] drop-shadow-[0_16px_30px_rgba(58,42,30,0.18)]"
+							loading="eager"
+							class="relative h-[92%] w-[92%] drop-shadow-[0_18px_34px_rgba(58,42,30,0.26)]"
 						/>
 					</picture>
 					<div class="absolute bottom-3 right-1 flex max-w-[60%] items-center gap-2 rounded-pill bg-hl-white px-4 py-2.5 text-sm font-semibold text-hl-brown shadow-hl-md sm:right-4">
