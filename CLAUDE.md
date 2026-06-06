@@ -1,8 +1,13 @@
 # CLAUDE.md — Helena Laundry
 
-Project-scoped guidance for `helena-laundry/`. Inherits the FlintCraft repo-root
-`CLAUDE.md` (stack, commands, conventions) but **overrides its brand**: Helena
-Laundry is a separate entity with its own voice, palette, and tokens.
+Project-scoped guidance for `helena-laundry/`. Borrows conventions from the
+FlintCraft repo-root `CLAUDE.md` but **overrides its brand AND its stack**:
+Helena Laundry is a separate entity with its own voice, palette, and tokens, and
+this is the Firefly **advanced tier** template — a superset of the root's
+brochure stack that adds a database, migrations, sessions, auth, and a full admin
+dashboard. Where the root says "stdlib only, no DB, no external frameworks,"
+trust the **Architecture** section below instead (module path is
+`github.com/firefly-software-mt/advanced-template`, not `standard-template`).
 
 - **Voice source of truth:** the `helena-laundry-brand-voice` skill +
   `helena-laundry-voice.md`. First-person "I" (Chanté, named on About only).
@@ -12,6 +17,69 @@ Laundry is a separate entity with its own voice, palette, and tokens.
   and `tailwind/tailwind.config.js` (`hl-*` prefix). Warm vintage-Americana,
   light theme — NOT the FlintCraft dark `fc-*`/`ff-*` palette.
 - **Full design guidelines:** `.impeccable.md` (read by the impeccable skills).
+
+## Architecture
+
+Go `net/http` (no web framework) + templ + htmx + Alpine.js + Tailwind **v4** +
+[`flint-ui`](https://github.com/flintcraftstudio/flint-ui) components, backed by
+SQLite. The README covers setup; this section is the parts you can't see from one
+file.
+
+**Build/dev (Mage, not Make).** `mage Dev` = `Build` (`BuildCSS` + `Generate` +
+`go build`) then `Run`. Two codegen passes feed the build — **always regenerate
+after editing their sources, or you'll build stale code:**
+- `mage GenerateTempl` — `.templ` → `*_templ.go` (run after editing any `.templ`).
+- `mage GenerateSqlc` — `queries/*.sql` → `internal/db/` (run after editing
+  queries). `mage Generate` runs both.
+- `mage BuildCSS` — Tailwind v4 is **CSS-first**: no `-c` config flag; theme and
+  `@source` globs live in `tailwind/input.css`. `BuildCSS` first writes the
+  gitignored `tailwind/flint-source.css` pointing Tailwind at the resolved
+  flint-ui module dir so its utility classes (kept in flint-ui's `*.go`, not
+  `.templ`) get compiled. Output → `web/static/css/site.css` (gitignored).
+
+**Database & migrations.** SQLite via `modernc.org/sqlite` (pure Go, no CGo),
+WAL + foreign keys on. Migrations are **goose** SQL files in `migrations/`,
+applied two ways: `main.go` runs `goose.Up` on every startup, and `mage MigrateUp`
+/ `MigrateDown` / `MigrateStatus` / `CreateMigration <name>` for manual control.
+`mage Seed <email> <password>` (→ `cmd/seed`) creates an admin user.
+
+**Data access — read this before touching the DB.** There are *two* layers and
+they don't overlap. `internal/db/` is **sqlc-generated** but currently only
+covers `users` + `sessions` and **is not imported anywhere** — effectively dead.
+All live queries are **hand-written `database/sql`** on `*store.Store`
+(`internal/store/`: `store.go` writes/lists, `admin.go` get/update + dashboard
+counts, `settings.go` the settings singleton). Follow the hand-written pattern
+(parameterized SQL, a `scanX` helper, domain structs) — do **not** assume sqlc.
+The `bookings` "needs a date" → calendar flow is pure SQL
+(`ListUnscheduledBookings` / `ListBookingsScheduledBetween`), no schema for it.
+
+**Settings cache.** `internal/settings/` holds an in-memory `sync.RWMutex`
+snapshot of the single `settings` row (service-area ZIPs, pickup days, pricing,
+`accepting_bookings`, business identity), loaded once at startup. The booking
+flow reads it via `settings.Get()` / `IsZipAllowed` / `IsPickupDay` (no DB hit
+per request). On an admin save you must refresh **both** sinks: `settings.Set(s)`
+*and* `view.ApplySettings(s)` (the latter pushes identity strings into `view`
+package vars) — same two calls `main.go` makes at boot. Service area and pricing
+are **DB-backed now, not env vars** — `.env.example` notes this.
+
+**Auth & sessions.** Cookie-based, in `internal/session/`. `session.Middleware`
+wraps the whole mux, loads the `session_token` cookie, and attaches a `*User` to
+the request context (`session.FromContext`). `session.RequireAuth` gates every
+`/admin/*` route and is htmx-aware: unauthenticated htmx requests get an
+`HX-Redirect: /login` on a 200 (a 303 would be swallowed by the XHR and swap the
+login page into the target). Passwords are bcrypt; tokens are 32 random bytes.
+
+**Routing & handlers.** Go 1.22 method+pattern mux in `cmd/server/main.go` —
+that file is the route map. Handlers (`internal/handler/`) are closures that take
+their deps (`*store.Store`, mailer, Turnstile secret) as args. Public pages, three
+distinct contact-capture POSTs (`/contact/question|waitlist|booking`), auth, and
+the `RequireAuth`-gated admin dashboard (bookings, calendar, inquiries, waitlist,
+settings). Most admin interactions are htmx partial swaps — handlers render a row
+/ edit panel / region fragment, not a full page.
+
+**Graceful degradation.** Postmark, Turnstile, GA, and Pixel are all optional;
+missing env vars log a warning and disable the feature — form submissions are
+still persisted. Server does timed graceful shutdown on SIGINT/SIGTERM.
 
 ## Design Context
 

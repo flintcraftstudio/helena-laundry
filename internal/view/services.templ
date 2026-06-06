@@ -123,13 +123,14 @@ templ servicesContent() {
 						Weekly or every other week. Same $2 a pound, and I'll bring you proper laundry bags so you can quit raiding the kitchen trash box. You can still schedule one-off pickups whenever, too.
 					</p>
 				</div>
-				<div class="lg:pl-8">
+				<div class="flex flex-col gap-3 lg:items-end lg:pl-8">
+					@btnBookLight("Book a pickup")
 					<a
 						href={ templ.SafeURL(PhoneTel) }
-						class="inline-flex items-center gap-2.5 rounded-pill bg-hl-cream px-7 py-3.5 text-[16px] font-semibold text-hl-teal-deep transition duration-200 ease-hl-out hover:bg-hl-white active:scale-[0.97]"
+						class="inline-flex items-center justify-center gap-2.5 rounded-pill border-[1.5px] border-hl-cream/60 px-7 py-3 text-[15px] font-semibold text-hl-cream transition hover:bg-hl-cream/10"
 					>
 						@iconPhone("h-[18px] w-[18px]")
-						Call or text: { Phone }
+						Call or text { Phone }
 					</a>
 				</div>
 			</div>

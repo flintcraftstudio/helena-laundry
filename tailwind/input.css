@@ -240,6 +240,20 @@
   50%      { opacity: 1;   transform: translate3d( 7%,  1.5%, 0) skewY( 1.1deg) scale(1.18); }
 }
 
+/* Scroll-in reveal — one quiet 12px fade-rise as an element enters view. Pure
+   CSS via a scroll-driven timeline (no JS). Where animation-timeline is
+   unsupported the animation has no duration and snaps straight to its end state,
+   so the element is always visible. Stilled by the reduced-motion rule below. */
+@keyframes hl-reveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hl-reveal {
+  animation: hl-reveal both linear;
+  animation-timeline: view();
+  animation-range: entry 5% cover 16%;
+}
+
 /* ---------------------------------------------------------------------------
    flint-ui toast CSS (copied from flint-ui styles/flint.css — needed because we
    author our own input.css rather than importing theirs). Powers the toast
@@ -266,6 +280,11 @@
 .flint-toast-out-right { opacity: 0; transform: translateX(calc(100% + 1.5rem)); }
 .flint-toast-out-left  { opacity: 0; transform: translateX(calc(-100% - 1.5rem)); }
 
+/* Submit spinner — visible only while the owning form's htmx request is in flight
+   (htmx adds .htmx-request to the form during the POST). */
+.form-spinner { display: none; }
+.htmx-request .form-spinner { display: inline-flex; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
@@ -273,4 +292,5 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  .hl-reveal { animation: none; opacity: 1; transform: none; }
 }

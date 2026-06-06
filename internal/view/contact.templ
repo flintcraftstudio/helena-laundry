@@ -22,15 +22,15 @@ templ contactContent(qErrors, qValues map[string]string, qSuccess bool, wErrors,
 	<!-- Schedule a pickup (primary path) -->
 	<section class="bg-hl-cream">
 		<div class="mx-auto max-w-content px-5 pb-12 sm:px-8">
-			<div class="overflow-hidden rounded-2xl bg-hl-rust text-hl-cream shadow-hl-md">
+			<div class="overflow-hidden rounded-2xl bg-hl-rust-deep text-hl-cream shadow-hl-md">
 				<div class="grid gap-8 p-8 sm:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
 					<div>
 						<p class="text-[13px] font-bold uppercase tracking-caps text-hl-ochre">Schedule a pickup</p>
 						<h2 class="mt-3 font-display text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight text-hl-cream">Book a pickup in under a minute.</h2>
-						<p class="mt-4 max-w-lg text-[17px] leading-relaxed text-hl-cream/85">
+						<p class="mt-4 max-w-lg text-[17px] leading-relaxed text-hl-cream">
 							Tell me your name, when you'd like your laundry picked up, and how you want it done — that's it. No app to download, no account to make. Rather just call or text? That works too.
 						</p>
-						<p class="mt-5 text-[14px] text-hl-cream/70">
+						<p class="mt-5 text-[14px] text-hl-cream">
 							I pick up across the Helena Valley. Most orders are back on your porch in 24 to 48 hours.
 						</p>
 					</div>
@@ -41,14 +41,7 @@ templ contactContent(qErrors, qValues map[string]string, qSuccess bool, wErrors,
 							class="inline-flex items-center justify-center gap-2.5 rounded-pill border-[1.5px] border-hl-cream/60 px-7 py-3 text-[15px] font-semibold text-hl-cream transition hover:bg-hl-cream/10"
 						>
 							@iconPhone("h-[18px] w-[18px]")
-							Call { Phone }
-						</a>
-						<a
-							href={ templ.SafeURL(PhoneSMS) }
-							class="inline-flex items-center justify-center gap-2 rounded-pill border-[1.5px] border-hl-cream/60 px-7 py-3 text-[15px] font-semibold text-hl-cream transition hover:bg-hl-cream/10"
-						>
-							@iconMessage("h-[18px] w-[18px]")
-							Text instead
+							Call or text { Phone }
 						</a>
 					</div>
 				</div>
@@ -88,6 +81,25 @@ templ contactContent(qErrors, qValues map[string]string, qSuccess bool, wErrors,
 			</div>
 		</div>
 	</section>
+	<script>
+		// After an htmx form swap, move focus to the new status region (error
+		// summary or success confirmation) so keyboard + screen-reader users are
+		// told what happened, and re-render any Turnstile widget the swap brought in
+		// (Cloudflare's implicit render only runs on full page load).
+		(function () {
+			document.body.addEventListener("htmx:afterSwap", function (e) {
+				var scope = e.target;
+				if (!scope || !scope.querySelector) return;
+				var status = scope.querySelector("[data-formstatus]");
+				if (status) status.focus();
+				if (window.turnstile) {
+					scope.querySelectorAll(".cf-turnstile").forEach(function (n) {
+						try { window.turnstile.render(n); } catch (err) {}
+					});
+				}
+			});
+		})();
+	</script>
 }
 
 // ---------------------------------------------------------------------------
@@ -101,20 +113,32 @@ templ QuestionForm(errors, values map[string]string, success bool) {
 		}
 	} else {
 		<form hx-post="/contact/question" hx-swap="outerHTML" class="space-y-4">
-			if errors["form"] != "" {
-				@formError(errors["form"])
-			}
-			@fieldText("q-name", "name", "Your name", "Jane Doe", values["name"], errors["name"])
-			@fieldText("q-contact", "contact", "Best way to reach you", "Phone or email", values["contact"], errors["contact"])
+			@formErrorSummary(errors)
+			@fieldText("q-name", "name", "Your name", "Jane Doe", values["name"], errors["name"], true)
+			@fieldText("q-contact", "contact", "Best way to reach you", "Phone or email", values["contact"], errors["contact"], true)
 			@fieldSelect("q-topic", "topic", "What's on your mind?", values["topic"], errors["topic"], []selectOption{
 				{"question", "A question"},
 				{"feedback", "Feedback"},
 				{"schedule", "I want to schedule"},
 			})
-			@fieldTextarea("q-message", "message", "Your message", "Ask away…", values["message"], errors["message"])
+			<!-- If they pick "I want to schedule," nudge them to the faster booking modal. -->
+			<div
+				x-data="{ t: '' }"
+				x-init="let s = $el.previousElementSibling.querySelector('select'); t = s.value; s.addEventListener('change', e => t = e.target.value)"
+				x-show="t === 'schedule'"
+				x-cloak
+				class="rounded-xl border border-hl-rust/25 bg-hl-rust/[0.05] p-3.5"
+			>
+				<button type="button" @click="$store.booking.open()" class="group inline-flex items-center gap-1.5 text-[14px] font-semibold text-hl-rust-deep">
+					Ready to book? Skip the form and book a pickup
+					@iconArrowRight("h-4 w-4 transition-transform duration-200 ease-hl-out group-hover:translate-x-0.5")
+				</button>
+			</div>
+			@fieldTextarea("q-message", "message", "Your message", "Ask away…", values["message"], errors["message"], true)
 			if TurnstileSiteKey != "" {
 				<div class="cf-turnstile" data-sitekey={ TurnstileSiteKey }></div>
 			}
+			<p class="text-[12px] text-hl-brown-soft"><span class="text-hl-rust" aria-hidden="true">*</span> Required</p>
 			@submitButton("Send it over")
 		</form>
 	}
@@ -131,17 +155,16 @@ templ WaitlistForm(errors, values map[string]string, success bool) {
 		}
 	} else {
 		<form hx-post="/contact/waitlist" hx-swap="outerHTML" class="space-y-4">
-			if errors["form"] != "" {
-				@formError(errors["form"])
-			}
-			@fieldText("w-name", "name", "Name", "Jane Doe", values["name"], errors["name"])
-			@fieldText("w-location", "location", "Where you are", "Town or neighborhood — East Helena, Townsend, Boulder…", values["location"], errors["location"])
-			@fieldText("w-contact", "contact", "Best way to reach you", "Phone or email", values["contact"], errors["contact"])
+			@formErrorSummary(errors)
+			@fieldText("w-name", "name", "Name", "Jane Doe", values["name"], errors["name"], true)
+			@fieldText("w-location", "location", "Where you are", "Town or neighborhood — East Helena, Townsend, Boulder…", values["location"], errors["location"], true)
+			@fieldText("w-contact", "contact", "Best way to reach you", "Phone or email", values["contact"], errors["contact"], true)
 			@fieldKind(values["kind"])
 			@fieldTextareaOptional("w-notes", "notes", "Anything I should know?", "Optional", values["notes"])
 			if TurnstileSiteKey != "" {
 				<div class="cf-turnstile" data-sitekey={ TurnstileSiteKey }></div>
 			}
+			<p class="text-[12px] text-hl-brown-soft"><span class="text-hl-rust" aria-hidden="true">*</span> Required</p>
 			@submitButton("Add me to the list")
 		</form>
 	}
@@ -156,35 +179,55 @@ type selectOption struct {
 	Label string
 }
 
-templ fieldText(id, name, label, placeholder, value, err string) {
+templ fieldText(id, name, label, placeholder, value, err string, required bool) {
 	<div>
-		<label for={ id } class="mb-1.5 block text-[14px] font-semibold text-hl-brown">{ label }</label>
+		<label for={ id } class="mb-1.5 block text-[14px] font-semibold text-hl-brown">
+			{ label }
+			if required {
+				<span class="text-hl-rust" aria-hidden="true">*</span>
+			}
+		</label>
 		<input
 			type="text"
 			id={ id }
 			name={ name }
 			value={ value }
 			placeholder={ placeholder }
+			required?={ required }
+			if err != "" {
+				aria-invalid="true"
+				aria-describedby={ id + "-err" }
+			}
 			class={ "w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust", templ.KV("border-hl-rust/70", err != ""), templ.KV("border-hl-brown/20", err == "") }
 		/>
 		if err != "" {
-			@fieldErr(err)
+			@fieldErr(id + "-err", err)
 		}
 	</div>
 }
 
-templ fieldTextarea(id, name, label, placeholder, value, err string) {
+templ fieldTextarea(id, name, label, placeholder, value, err string, required bool) {
 	<div>
-		<label for={ id } class="mb-1.5 block text-[14px] font-semibold text-hl-brown">{ label }</label>
+		<label for={ id } class="mb-1.5 block text-[14px] font-semibold text-hl-brown">
+			{ label }
+			if required {
+				<span class="text-hl-rust" aria-hidden="true">*</span>
+			}
+		</label>
 		<textarea
 			id={ id }
 			name={ name }
 			rows="4"
 			placeholder={ placeholder }
+			required?={ required }
+			if err != "" {
+				aria-invalid="true"
+				aria-describedby={ id + "-err" }
+			}
 			class={ "w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust", templ.KV("border-hl-rust/70", err != ""), templ.KV("border-hl-brown/20", err == "") }
 		>{ value }</textarea>
 		if err != "" {
-			@fieldErr(err)
+			@fieldErr(id + "-err", err)
 		}
 	</div>
 }
@@ -208,6 +251,10 @@ templ fieldSelect(id, name, label, value, err string, options []selectOption) {
 		<select
 			id={ id }
 			name={ name }
+			if err != "" {
+				aria-invalid="true"
+				aria-describedby={ id + "-err" }
+			}
 			class={ "w-full appearance-none rounded-xl border bg-hl-white bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236B5848%22 stroke-width=%221.75%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22m6 9 6 6 6-6%22/></svg>')] bg-[length:20px] bg-[right_0.85rem_center] bg-no-repeat px-4 py-3 pr-11 text-[16px] text-hl-brown outline-none transition focus:border-hl-rust", templ.KV("border-hl-rust/70", err != ""), templ.KV("border-hl-brown/20", err == "") }
 		>
 			for _, opt := range options {
@@ -215,7 +262,7 @@ templ fieldSelect(id, name, label, value, err string, options []selectOption) {
 			}
 		</select>
 		if err != "" {
-			@fieldErr(err)
+			@fieldErr(id + "-err", err)
 		}
 	</div>
 }
@@ -238,28 +285,46 @@ templ kindOption(val, label string, checked bool) {
 	</label>
 }
 
-templ fieldErr(err string) {
-	<p class="mt-1 text-[13px] text-hl-rust">{ err }</p>
+templ fieldErr(id, err string) {
+	<p id={ id } class="mt-1 text-[13px] text-hl-rust">{ err }</p>
 }
 
+// formError is a single form-level error banner (used by the login form).
 templ formError(msg string) {
 	<div class="rounded-xl border border-hl-rust/40 bg-hl-rust/[0.07] p-4">
 		<p class="text-[14px] text-hl-rust-deep">{ msg }</p>
 	</div>
 }
 
+// formErrorSummary is the focusable, announced banner shown at the top of a form
+// after a failed submit. role="alert" announces it; tabindex -1 lets the
+// afterSwap script move focus here so keyboard/SR users land on the problem.
+templ formErrorSummary(errors map[string]string) {
+	if len(errors) > 0 {
+		<div data-formstatus tabindex="-1" role="alert" class="rounded-xl border border-hl-rust/40 bg-hl-rust/[0.07] p-4 outline-none">
+			if errors["form"] != "" {
+				<p class="text-[14px] text-hl-rust-deep">{ errors["form"] }</p>
+			} else {
+				<p class="text-[14px] text-hl-rust-deep">A few fields need a quick fix — see the notes below.</p>
+			}
+		</div>
+	}
+}
+
 templ submitButton(label string) {
 	<button
 		type="submit"
-		class="inline-flex w-full items-center justify-center gap-2 rounded-pill bg-hl-rust px-7 py-3.5 text-[16px] font-semibold text-hl-cream shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep hover:shadow-hl-rust active:scale-[0.98] sm:w-auto"
+		hx-disabled-elt="this"
+		class="inline-flex w-full items-center justify-center gap-2 rounded-pill bg-hl-rust px-7 py-3.5 text-[16px] font-semibold text-hl-cream shadow-[0_4px_14px_rgba(192,73,43,0.18)] transition duration-200 ease-hl-out hover:bg-hl-rust-deep hover:shadow-hl-rust active:scale-[0.98] disabled:cursor-wait disabled:opacity-80 sm:w-auto"
 	>
 		{ label }
 		@iconArrowRight("h-[18px] w-[18px]")
+		@iconSpinner("form-spinner h-[18px] w-[18px] animate-spin")
 	</button>
 }
 
 templ formConfirmation(tone string) {
-	<div class={ "flex items-start gap-4 rounded-2xl border p-6", templ.KV("border-hl-teal/30 bg-hl-teal/[0.07]", tone == "teal"), templ.KV("border-hl-rust/30 bg-hl-rust/[0.07]", tone == "rust") }>
+	<div data-formstatus tabindex="-1" role="status" class={ "flex items-start gap-4 rounded-2xl border p-6 outline-none", templ.KV("border-hl-teal/30 bg-hl-teal/[0.07]", tone == "teal"), templ.KV("border-hl-rust/30 bg-hl-rust/[0.07]", tone == "rust") }>
 		<span class={ "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full", templ.KV("bg-hl-teal/15 text-hl-teal-deep", tone == "teal"), templ.KV("bg-hl-rust/15 text-hl-rust", tone == "rust") }>
 			@iconCheck("h-5 w-5")
 		</span>

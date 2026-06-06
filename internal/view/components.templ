@@ -48,6 +48,18 @@ templ btnGhostIcon(href, label string) {
 	</a>
 }
 
+// btnGhostPhone is btnGhost with a leading phone icon — the secondary call/text
+// path when booking is the primary CTA.
+templ btnGhostPhone(label string) {
+	<a
+		href={ templ.SafeURL(PhoneTel) }
+		class="inline-flex items-center gap-2.5 rounded-pill border-[1.5px] border-hl-rust-deep px-7 py-3.5 font-body text-base font-semibold text-hl-rust-deep transition duration-200 ease-hl-out hover:bg-hl-rust-deep/[0.06] active:scale-[0.97]"
+	>
+		@iconPhone("h-[18px] w-[18px]")
+		{ label }
+	</a>
+}
+
 // textLink is an inline link with a trailing arrow — the demoted secondary CTA.
 // rust-deep clears AA on light backgrounds.
 templ textLink(href, label string) {
@@ -91,6 +103,15 @@ templ iconCheck(class string) {
 	@iconBase(class) {
 		<path d="M20 6 9 17l-5-5"></path>
 	}
+}
+
+// iconSpinner is the in-flight indicator for submit buttons (toggled by the
+// .form-spinner / .htmx-request CSS rule). Not an iconBase — it spins its own ring.
+templ iconSpinner(class string) {
+	<svg class={ class } viewBox="0 0 24 24" fill="none" aria-hidden="true">
+		<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-25"></circle>
+		<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+	</svg>
 }
 
 // Step / feature icons

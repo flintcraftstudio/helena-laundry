@@ -25,7 +25,7 @@ templ aboutContent() {
 						<div class="absolute inset-3 rounded-full border-2 border-hl-rust shadow-[inset_0_0_0_5px_#F2EBD8,inset_0_0_0_7px_#C0492B]"></div>
 						<picture>
 							<source srcset="/static/img/badge.webp" type="image/webp"/>
-							<img src="/static/img/badge.png" alt="Helena Laundry badge" width="300" height="300" class="relative h-[78%] w-[78%] drop-shadow-[0_16px_30px_rgba(58,42,30,0.18)]"/>
+							<img src="/static/img/badge.png" alt="Chanté's Helena Laundry badge — a woman flexing in a floral headscarf" width="300" height="300" class="relative h-[78%] w-[78%] drop-shadow-[0_16px_30px_rgba(58,42,30,0.18)]"/>
 						</picture>
 					</div>
 				</div>
@@ -43,10 +43,9 @@ templ aboutContent() {
 				<p>
 					I spent years working around animals and the people who love them — first as a veterinary technician, then managing a busy practice. That work teaches you how to run a real operation: keep the books straight, keep your word on the timeline, and never make a person guess what something costs.
 				</p>
-				<div class="my-10">
-					@doubleRule()
+				<div class="my-10 rounded-2xl bg-hl-teal-deep px-7 py-9 text-center shadow-hl-sm sm:px-10">
+					<h2 class="font-display text-[clamp(1.6rem,3.6vw,2rem)] leading-snug text-hl-cream">So why laundry? Because it never stops.</h2>
 				</div>
-				<p class="font-display text-[24px] leading-snug text-hl-brown">So why laundry? Because it never stops.</p>
 				<p>
 					Everybody needs clean clothes — the overworked mom with three kids and a full-time job, the small shop going through towels by the armful — but not everybody has the time or the convenience to keep up. That's a real need, and Helena could use the help — the kind of help that has to come from someone actually here, not an app or a company three states off. I'd rather build something honest around a thing people actually need than chase something flashier. Laundry it is.
 				</p>
@@ -56,8 +55,8 @@ templ aboutContent() {
 			</div>
 
 			<!-- The promise -->
-			<div class="mt-12 rounded-2xl border border-hl-rust/25 bg-hl-tint p-8 shadow-hl-sm sm:p-10">
-				<p class="text-[13px] font-bold uppercase tracking-caps text-hl-teal">My promise</p>
+			<div class="hl-reveal mt-12 rounded-2xl border border-hl-rust/25 bg-hl-tint p-8 shadow-hl-sm sm:p-10">
+				<h2 class="eyebrow">My promise</h2>
 				<p class="mt-4 text-[18px] leading-relaxed text-hl-brown">
 					So here's my promise, plain as I can put it.
 				</p>
@@ -70,12 +69,12 @@ templ aboutContent() {
 					That's the whole business. I think it's enough.
 				</p>
 				<p class="mt-6 font-display text-[26px] text-hl-rust">— Chanté</p>
-				<p class="text-[14px] text-hl-brown-faint">Helena Laundry · Helena, Montana</p>
+				<p class="text-[14px] text-hl-brown-soft">Helena Laundry · Helena, Montana</p>
 			</div>
 
 			<div class="mt-10 flex flex-wrap gap-3.5">
-				@btnCall("Call or text to schedule a pickup")
-				@btnGhostIcon("/contact", "Send a note")
+				@btnBook("Book a pickup")
+				@btnGhostPhone("Call or text instead")
 			</div>
 		</div>
 	</section>
