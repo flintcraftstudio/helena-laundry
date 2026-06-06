@@ -142,6 +142,7 @@ func main() {
 		http.Redirect(w, r, "/admin", http.StatusMovedPermanently)
 	})
 	mux.Handle("GET /admin/calendar", protected(handler.AdminCalendar(st)))
+	mux.Handle("GET /admin/calendar/day/{date}", protected(handler.AdminCalendarDay(st)))
 	mux.Handle("GET /admin/calendar/pickup/{id}", protected(handler.AdminCalendarPickup(st)))
 	mux.Handle("POST /admin/calendar/pickup/{id}", protected(handler.AdminCalendarPickupUpdate(st)))
 	mux.Handle("GET /admin/bookings", protected(handler.AdminBookings(st)))

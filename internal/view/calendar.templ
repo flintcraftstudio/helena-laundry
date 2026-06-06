@@ -12,59 +12,101 @@ import (
 )
 
 // AdminCalendarPage is the full pickup-calendar page.
-templ AdminCalendarPage(userEmail string, cal CalMonth) {
+templ AdminCalendarPage(userEmail string, cal Cal) {
 	@AdminBase("Calendar", userEmail, "calendar", calendarBody(cal))
 }
 
-templ calendarBody(cal CalMonth) {
-	<p class="mb-6 text-sm text-muted-foreground">Place new pickups on a day, then move them through the week.</p>
+templ calendarBody(cal Cal) {
+	<p class="mb-6 text-sm text-muted-foreground">Tap a pickup to set its day, window, and status. Switch between day, week, and month as things get busy.</p>
 	@CalendarRegion(cal)
 }
 
-// CalendarRegion is the htmx swap target — month nav, the unscheduled strip, the
-// grid, and the phone agenda all re-render together. Editing happens in the
-// shared admin drawer (see CalendarPickupPanel), which lives outside this region.
-templ CalendarRegion(cal CalMonth) {
+// CalendarRegion is the htmx swap target — the toolbar (view switch + date nav),
+// the unscheduled strip, and whichever view is active all re-render together.
+// Editing happens in the shared admin drawer (see CalendarPickupPanel), which
+// lives outside this region.
+templ CalendarRegion(cal Cal) {
 	<div id="calendar-region">
 		@calToolbar(cal)
-		@calUnscheduled(cal.Unscheduled, cal.Month)
-		@calLegend()
-		<!-- Month grid: tablet/desktop only — a 7-col grid is unreadable on a phone. -->
-		<div class="hidden overflow-hidden rounded-2xl border border-border shadow-hl-sm sm:block">
-			<div class="grid grid-cols-7 gap-px bg-border">
-				for _, wd := range WeekdayLabels {
-					<div class="bg-surface px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">{ wd }</div>
+		@calUnscheduled(cal.Unscheduled, cal.Ref())
+		switch cal.View {
+			case "day":
+				@calDayView(cal)
+			case "month":
+				@calLegend()
+				<!-- Month grid: tablet/desktop only — a 7-col grid is unreadable on a phone. -->
+				<div class="hidden overflow-hidden rounded-2xl border border-border shadow-hl-sm sm:block">
+					<div class="grid grid-cols-7 gap-px bg-border">
+						for _, wd := range WeekdayLabels {
+							<div class="bg-surface px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">{ wd }</div>
+						}
+						for _, week := range cal.Weeks {
+							for _, d := range week {
+								@calDayCell(d, cal.Ref())
+							}
+						}
+					</div>
+				</div>
+				<!-- Agenda: phone view — the same month as a day-grouped list. -->
+				@calAgenda(cal.Days, cal.Ref())
+			default: // week
+				@calLegend()
+				<!-- Week columns: tablet/desktop only — they fold to the agenda on a phone. -->
+				<div class="hidden overflow-hidden rounded-2xl border border-border shadow-hl-sm sm:block">
+					<div class="grid grid-cols-7 gap-px bg-border">
+						for _, d := range cal.Days {
+							@calWeekCol(d, cal.Ref())
+						}
+					</div>
+				</div>
+				<!-- Agenda: phone view — the week as a day-grouped list. -->
+				@calAgenda(cal.Days, cal.Ref())
+		}
+	</div>
+}
+
+templ calToolbar(cal Cal) {
+	<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<h2 class="font-display text-2xl text-foreground">{ cal.Label }</h2>
+		<div class="flex items-center gap-3">
+			@calViewSwitch(cal)
+			<div class="flex items-center gap-2">
+				@calNavButton(calStepURL(cal.View, cal.Prev), calPrevLabel(cal.View)) {
+					@iconArrowRight("h-4 w-4 rotate-180")
 				}
-				for _, week := range cal.Weeks {
-					for _, d := range week {
-						@calDayCell(d, cal.Month)
-					}
+				if !cal.IsCurrent {
+					@button.Button(button.Props{Outline: true, Attrs: calNavAttrs(calTodayURL(cal.View))}) { Today }
+				}
+				@calNavButton(calStepURL(cal.View, cal.Next), calNextLabel(cal.View)) {
+					@iconArrowRight("h-4 w-4")
 				}
 			</div>
 		</div>
-		<!-- Agenda: phone view — the same month as a day-grouped list. -->
-		@calAgenda(cal)
 	</div>
 }
 
-templ calToolbar(cal CalMonth) {
-	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-		<h2 class="font-display text-2xl text-foreground">{ cal.Label }</h2>
-		<div class="flex items-center gap-2">
-			@calNavButton("/admin/calendar?m="+cal.Prev, "Previous month") {
-				@iconArrowRight("h-4 w-4 rotate-180")
-			}
-			if !cal.IsCurrent {
-				@button.Button(button.Props{Outline: true, Attrs: calNavAttrs("/admin/calendar")}) { Today }
-			}
-			@calNavButton("/admin/calendar?m="+cal.Next, "Next month") {
-				@iconArrowRight("h-4 w-4")
-			}
-		</div>
+// calViewSwitch is the Day | Week | Month segmented control.
+templ calViewSwitch(cal Cal) {
+	<div class="inline-flex rounded-lg border border-border bg-surface p-0.5" role="group" aria-label="Calendar view">
+		for _, v := range CalViews {
+			<button
+				type="button"
+				class={ "rounded-md px-3 py-1.5 text-sm font-medium transition",
+					templ.KV("bg-accent text-accent-foreground", cal.View == v.Key),
+					templ.KV("text-foreground/70 hover:text-foreground", cal.View != v.Key) }
+				aria-pressed={ ariaPressed(cal.View == v.Key) }
+				hx-get={ calViewURL(v.Key, cal.Anchor) }
+				hx-target="#calendar-region"
+				hx-swap="outerHTML"
+				hx-push-url="true"
+			>
+				{ v.Label }
+			</button>
+		}
 	</div>
 }
 
-// calNavButton is an icon-only month stepper.
+// calNavButton is an icon-only date stepper.
 templ calNavButton(href, label string) {
 	<button
 		type="button"
@@ -80,7 +122,7 @@ templ calNavButton(href, label string) {
 }
 
 // calUnscheduled is the "needs a date" strip of bookings with no scheduled day.
-templ calUnscheduled(items []store.Booking, month string) {
+templ calUnscheduled(items []store.Booking, ref CalRef) {
 	if len(items) > 0 {
 		<div class="mb-4 rounded-2xl border border-warning/50 bg-warning/10 p-4">
 			<div class="mb-2.5 flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -92,7 +134,7 @@ templ calUnscheduled(items []store.Booking, month string) {
 					<button
 						type="button"
 						class="inline-flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-sm text-foreground transition hover:border-accent/50 hover:bg-muted"
-						hx-get={ pickupURL(b.ID, month) }
+						hx-get={ pickupURL(b.ID, ref) }
 						hx-target="#admin-drawer-body"
 						hx-swap="innerHTML"
 					>
@@ -105,9 +147,9 @@ templ calUnscheduled(items []store.Booking, month string) {
 	}
 }
 
-// calLegend is the key for the status dots used on the grid chips — without it
-// the colors are recognition-by-memory. Hidden from screen readers because each
-// chip already carries its status as sr-only text.
+// calLegend is the key for the status dots used on the grid/week chips — without
+// it the colors are recognition-by-memory. Hidden from screen readers because
+// each chip already carries its status as sr-only text.
 templ calLegend() {
 	<div class="mb-3 hidden flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[11px] text-muted-foreground sm:flex" aria-hidden="true">
 		<span class="font-semibold uppercase tracking-caps text-muted-foreground/80">Status</span>
@@ -120,31 +162,195 @@ templ calLegend() {
 	</div>
 }
 
-// calAgenda is the phone view (below sm): the month's scheduled pickups as a
-// day-grouped list with full names, windows, and status text — the 7-col grid
-// crushes those to an undecodable dot on a narrow screen. Same tap-to-edit
-// behavior as the grid chips (loads the pickup panel).
-templ calAgenda(cal CalMonth) {
-	<div class="sm:hidden">
-		if calHasScheduled(cal) {
-			<ol class="space-y-5">
-				for _, week := range cal.Weeks {
-					for _, d := range week {
-						if d.InMonth && len(d.Bookings) > 0 {
-							@calAgendaDay(d, cal.Month)
-						}
-					}
+// ---------------------------------------------------------------------------
+// Month grid
+// ---------------------------------------------------------------------------
+
+// calDayCell caps how many chips it draws so one heavy day can't tower over the
+// grid and shove every later week off-screen — the rest collapse into a "+N more"
+// button that opens the day's full list in the drawer (see CalendarDayPanel).
+templ calDayCell(d CalDay, ref CalRef) {
+	<div class={ "flex min-h-[104px] flex-col gap-1 p-1.5", templ.KV("bg-surface", d.InMonth), templ.KV("bg-muted/40", !d.InMonth) }>
+		<div class="flex justify-end">
+			<span class={ "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs",
+				templ.KV("text-muted-foreground/70", !d.InMonth),
+				templ.KV("text-foreground", d.InMonth && !d.IsToday),
+				templ.KV("bg-accent font-semibold text-accent-foreground", d.IsToday) }>
+				{ fmt.Sprintf("%d", d.Day) }
+			</span>
+		</div>
+		<div class="space-y-1">
+			for _, b := range cellChips(d.Bookings) {
+				@calChip(b, ref)
+			}
+			if n := cellOverflow(d.Bookings); n > 0 {
+				@calMore(d, ref, n)
+			}
+		</div>
+	</div>
+}
+
+templ calChip(b store.Booking, ref CalRef) {
+	<button
+		type="button"
+		class="flex w-full items-center gap-1.5 rounded-md bg-muted/70 px-1.5 py-1 text-left text-xs text-foreground transition hover:bg-muted"
+		title={ chipTitle(b) }
+		hx-get={ pickupURL(b.ID, ref) }
+		hx-target="#admin-drawer-body"
+		hx-swap="innerHTML"
+	>
+		<span class={ bookingDotClass(b.Status) }></span>
+		<span class="min-w-0 flex-1 truncate">{ b.Name }</span>
+		if b.PickupWindow != "" {
+			<span class="max-w-[46%] shrink-0 truncate text-[10px] tabular-nums text-muted-foreground">{ b.PickupWindow }</span>
+		}
+		<span class="sr-only">
+			— { bookingStatusLabel(b.Status) }
+			if b.PickupWindow != "" {
+				, { b.PickupWindow }
+			}
+		</span>
+	</button>
+}
+
+// calMore is the overflow affordance on a packed day cell — taps open that day's
+// full pickup list in the shared drawer.
+templ calMore(d CalDay, ref CalRef, n int) {
+	<button
+		type="button"
+		class="w-full rounded-md px-1.5 py-1 text-left text-[11px] font-medium text-accent transition hover:bg-accent/10"
+		aria-label={ fmt.Sprintf("Show all pickups on %s", agendaDayLabel(d)) }
+		hx-get={ dayURL(d.ISO, ref) }
+		hx-target="#admin-drawer-body"
+		hx-swap="innerHTML"
+	>
+		+{ fmt.Sprintf("%d", n) } more
+	</button>
+}
+
+// ---------------------------------------------------------------------------
+// Week columns (desktop/tablet)
+// ---------------------------------------------------------------------------
+
+// calWeekCol is one full-height day column in the week view — room the month grid
+// doesn't have to show each pickup's window and status, not just a dot.
+templ calWeekCol(d CalDay, ref CalRef) {
+	<div class="flex min-h-[60vh] flex-col bg-surface">
+		<div class={ "border-b border-border px-2 py-2 text-center", templ.KV("bg-accent/5", d.IsToday) }>
+			<div class="text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">{ weekdayShort(d) }</div>
+			<div class={ "mt-1 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-sm",
+				templ.KV("text-foreground", !d.IsToday),
+				templ.KV("bg-accent font-semibold text-accent-foreground", d.IsToday) }>
+				{ fmt.Sprintf("%d", d.Day) }
+			</div>
+		</div>
+		<div class="flex-1 space-y-1.5 p-1.5">
+			for _, b := range d.Bookings {
+				@calWeekEvent(b, ref)
+			}
+			if len(d.Bookings) == 0 {
+				<p class="px-1 pt-1 text-[11px] text-muted-foreground/60">—</p>
+			}
+		</div>
+	</div>
+}
+
+templ calWeekEvent(b store.Booking, ref CalRef) {
+	<button
+		type="button"
+		class="block w-full rounded-md bg-muted/70 px-2 py-1.5 text-left text-xs transition hover:bg-muted"
+		title={ chipTitle(b) }
+		hx-get={ pickupURL(b.ID, ref) }
+		hx-target="#admin-drawer-body"
+		hx-swap="innerHTML"
+	>
+		<div class="flex items-center gap-1.5">
+			<span class={ bookingDotClass(b.Status) }></span>
+			if b.PickupWindow != "" {
+				<span class="font-medium tabular-nums text-foreground">{ b.PickupWindow }</span>
+			}
+			<span class="ml-auto shrink-0 text-[10px] text-muted-foreground">{ bookingStatusLabel(b.Status) }</span>
+		</div>
+		<div class="mt-0.5 truncate text-foreground">{ b.Name }</div>
+	</button>
+}
+
+// ---------------------------------------------------------------------------
+// Day run sheet (all sizes)
+// ---------------------------------------------------------------------------
+
+// calDayView is the single-day run sheet — every pickup for the day with its
+// window, plan, and address, sized to read on a phone mid-route or at the desk.
+templ calDayView(cal Cal) {
+	<div class="mx-auto max-w-2xl">
+		if len(cal.Days) > 0 && len(cal.Days[0].Bookings) > 0 {
+			<ol class="space-y-2.5">
+				for _, b := range cal.Days[0].Bookings {
+					@calDayRow(b, cal.Ref())
 				}
 			</ol>
 		} else {
-			<p class="rounded-2xl border border-border bg-surface px-4 py-7 text-center text-sm text-muted-foreground shadow-hl-sm">
-				Nothing scheduled this month yet.
+			<p class="rounded-2xl border border-border bg-surface px-4 py-10 text-center text-sm text-muted-foreground shadow-hl-sm">
+				Nothing scheduled for { cal.Label }.
 			</p>
 		}
 	</div>
 }
 
-templ calAgendaDay(d CalDay, month string) {
+templ calDayRow(b store.Booking, ref CalRef) {
+	<li>
+		<button
+			type="button"
+			class="flex w-full items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 text-left shadow-hl-sm transition hover:border-accent/40 hover:bg-muted/40"
+			hx-get={ pickupURL(b.ID, ref) }
+			hx-target="#admin-drawer-body"
+			hx-swap="innerHTML"
+		>
+			<span class={ bookingDotClass(b.Status), "mt-1.5" }></span>
+			<span class="min-w-0 flex-1">
+				<span class="flex flex-wrap items-baseline gap-x-2">
+					if b.PickupWindow != "" {
+						<span class="font-medium tabular-nums text-foreground">{ b.PickupWindow }</span>
+					}
+					<span class="text-xs text-muted-foreground">{ planShort(b.Plan) }</span>
+				</span>
+				<span class="mt-0.5 block font-medium text-foreground">{ b.Name }</span>
+				if b.Address != "" {
+					<span class="mt-0.5 block truncate text-xs text-muted-foreground">{ b.Address }</span>
+				}
+			</span>
+			<span class="shrink-0 text-xs font-medium text-muted-foreground">{ bookingStatusLabel(b.Status) }</span>
+		</button>
+	</li>
+}
+
+// ---------------------------------------------------------------------------
+// Phone agenda (month + week)
+// ---------------------------------------------------------------------------
+
+// calAgenda is the phone view for month/week: the in-scope days that carry
+// pickups as a day-grouped list with full names, windows, and status text — the
+// 7-col grid crushes those to an undecodable dot on a narrow screen. Same
+// tap-to-edit behavior as the grid chips (loads the pickup panel).
+templ calAgenda(days []CalDay, ref CalRef) {
+	<div class="sm:hidden">
+		if calHasScheduled(days) {
+			<ol class="space-y-5">
+				for _, d := range days {
+					if d.InMonth && len(d.Bookings) > 0 {
+						@calAgendaDay(d, ref)
+					}
+				}
+			</ol>
+		} else {
+			<p class="rounded-2xl border border-border bg-surface px-4 py-7 text-center text-sm text-muted-foreground shadow-hl-sm">
+				Nothing scheduled here yet.
+			</p>
+		}
+	</div>
+}
+
+templ calAgendaDay(d CalDay, ref CalRef) {
 	<li>
 		<div class="mb-2 flex items-baseline gap-2">
 			<h3 class={ "font-display text-lg", templ.KV("text-accent", d.IsToday), templ.KV("text-foreground", !d.IsToday) }>{ agendaDayLabel(d) }</h3>
@@ -154,17 +360,17 @@ templ calAgendaDay(d CalDay, month string) {
 		</div>
 		<div class="space-y-2">
 			for _, b := range d.Bookings {
-				@calAgendaRow(b, month)
+				@calAgendaRow(b, ref)
 			}
 		</div>
 	</li>
 }
 
-templ calAgendaRow(b store.Booking, month string) {
+templ calAgendaRow(b store.Booking, ref CalRef) {
 	<button
 		type="button"
 		class="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left shadow-hl-sm transition hover:border-accent/40 hover:bg-muted/40"
-		hx-get={ pickupURL(b.ID, month) }
+		hx-get={ pickupURL(b.ID, ref) }
 		hx-target="#admin-drawer-body"
 		hx-swap="innerHTML"
 	>
@@ -177,45 +383,31 @@ templ calAgendaRow(b store.Booking, month string) {
 	</button>
 }
 
-templ calDayCell(d CalDay, month string) {
-	<div class={ "flex min-h-[104px] flex-col gap-1 p-1.5", templ.KV("bg-surface", d.InMonth), templ.KV("bg-muted/40", !d.InMonth) }>
-		<div class="flex justify-end">
-			<span class={ "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs",
-				templ.KV("text-muted-foreground/70", !d.InMonth),
-				templ.KV("text-foreground", d.InMonth && !d.IsToday),
-				templ.KV("bg-accent font-semibold text-accent-foreground", d.IsToday) }>
-				{ fmt.Sprintf("%d", d.Day) }
-			</span>
-		</div>
-		<div class="space-y-1">
-			for _, b := range d.Bookings {
-				@calChip(b, month)
+// ---------------------------------------------------------------------------
+// Drawer panels
+// ---------------------------------------------------------------------------
+
+// CalendarDayPanel is the drawer body for one day's full pickup list — the target
+// of a "+N more" tap when a month cell overflows. Each row reuses the agenda row,
+// so tapping one swaps the drawer to that pickup's editor (same #admin-drawer-body
+// target). ref is the calendar scope, round-tripped so a save returns to view.
+templ CalendarDayPanel(label string, bookings []store.Booking, ref CalRef) {
+	@adminPanelShell(label) {
+		<div class="flex flex-1 flex-col gap-2 overflow-y-auto px-6 py-5">
+			for _, b := range bookings {
+				@calAgendaRow(b, ref)
 			}
 		</div>
-	</div>
-}
-
-templ calChip(b store.Booking, month string) {
-	<button
-		type="button"
-		class="flex w-full items-center gap-1.5 rounded-md bg-muted/70 px-1.5 py-1 text-left text-xs text-foreground transition hover:bg-muted"
-		title={ b.Name + " — " + bookingStatusLabel(b.Status) }
-		hx-get={ pickupURL(b.ID, month) }
-		hx-target="#admin-drawer-body"
-		hx-swap="innerHTML"
-	>
-		<span class={ bookingDotClass(b.Status) }></span>
-		<span class="truncate">{ b.Name }</span>
-		<span class="sr-only">— { bookingStatusLabel(b.Status) }</span>
-	</button>
+	}
 }
 
 // CalendarPickupPanel is the slide-over drawer body for rescheduling one pickup
 // from the calendar — the same drawer used by Pickups and Inquiries. Mirrors
 // BookingEditPanel, but Save re-renders the whole #calendar-region (so the chip
 // moves to its new day) and the handler fires admin-drawer-close to slide the
-// panel shut. month is round-tripped so the rebuilt region stays on view.
-templ CalendarPickupPanel(b store.Booking, month string) {
+// panel shut. The scope (ref) is round-tripped so the rebuilt region stays on the
+// same view and date.
+templ CalendarPickupPanel(b store.Booking, ref CalRef) {
 	@adminPanelShell("Edit pickup") {
 		<form
 			x-data={ "{ status: '" + b.Status + "' }" }
@@ -225,7 +417,8 @@ templ CalendarPickupPanel(b store.Booking, month string) {
 			hx-disabled-elt="find button[type='submit']"
 			class="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5"
 		>
-			<input type="hidden" name="m" value={ month }/>
+			<input type="hidden" name="v" value={ ref.View }/>
+			<input type="hidden" name="d" value={ ref.Anchor }/>
 			<div class="space-y-1.5 text-sm">
 				<h3 class="font-display text-base text-foreground">{ b.Name }</h3>
 				@adminDetail("Address", orDash(b.Address)+", "+orDash(b.Zip))
@@ -264,7 +457,7 @@ templ CalendarPickupPanel(b store.Booking, month string) {
 	}
 }
 
-// calNavAttrs are the htmx attributes for a month-navigation control.
+// calNavAttrs are the htmx attributes for a date-navigation control.
 func calNavAttrs(href string) templ.Attributes {
 	return templ.Attributes{
 		"hx-get":      href,
@@ -274,7 +467,7 @@ func calNavAttrs(href string) templ.Attributes {
 	}
 }
 
-// pickupURL is the GET that loads a pickup's edit panel for the given month.
-func pickupURL(id int64, month string) string {
-	return fmt.Sprintf("/admin/calendar/pickup/%d?m=%s", id, month)
-}
+// calPrevLabel / calNextLabel are the aria-labels for the date steppers, named
+// for the active view.
+func calPrevLabel(view string) string { return "Previous " + view }
+func calNextLabel(view string) string { return "Next " + view }
