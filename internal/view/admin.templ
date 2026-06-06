@@ -310,26 +310,52 @@ templ BookingEditPanel(b store.Booking) {
 // Inquiries
 // ===========================================================================
 
-templ AdminInquiriesPage(userEmail, status string, inquiries []store.Question) {
-	@AdminBase("Inquiries", userEmail, "inquiries", adminSectionIntro("Contact inquiries", "Questions and feedback sent from the site.", InquiriesSection(status, inquiries)))
+templ AdminInquiriesPage(userEmail string, iv InquiriesView) {
+	@AdminBase("Inquiries", userEmail, "inquiries", adminSectionIntro("Contact inquiries", "Questions and feedback sent from the site.", InquiriesSection(iv)))
 }
 
-templ InquiriesSection(status string, inquiries []store.Question) {
+templ InquiriesSection(iv InquiriesView) {
 	<section id="inquiries-section">
-		@adminFilterTabs("inquiries-section", "/admin/inquiries", status, questionStatusOrder, questionStatusLabel, "", "")
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			@adminFilterTabs("inquiries-section", "/admin/inquiries", iv.Status, questionStatusOrder, questionStatusLabel, inquiriesTabExtra(iv.Search), "#inquiries-spinner")
+			<div class="flex items-center gap-2">
+				<span id="inquiries-spinner" class="htmx-indicator text-muted-foreground">
+					@iconSpinner("h-4 w-4 animate-spin")
+				</span>
+				@input.Input(input.Props{
+					Type:         "search",
+					Name:         "q",
+					ID:           "inquiries-search",
+					Value:        iv.Search,
+					Placeholder:  "Search name, contact, message…",
+					Autocomplete: "off",
+					Class:        "sm:w-64",
+					Attrs: templ.Attributes{
+						"hx-get":       "/admin/inquiries" + statusQuery(iv.Status),
+						"hx-trigger":   "input changed delay:300ms, search",
+						"hx-target":    "#inquiries-section",
+						"hx-swap":      "outerHTML",
+						"hx-indicator": "#inquiries-spinner",
+						"hx-push-url":  "true",
+						"hx-preserve":  "true",
+						"aria-label":   "Search inquiries",
+					},
+				})
+			</div>
+		</div>
 		<div class="mt-4">
 			@card.Card(card.Props{}) {
 				@card.Body(card.SubProps{}) {
-					if len(inquiries) == 0 {
-						@adminEmpty("No inquiries here yet.")
+					if len(iv.Inquiries) == 0 {
+						@adminEmpty(inquiriesEmptyMsg(iv))
 					} else {
 						@table.Table(table.Props{}) {
 							@table.Head(table.HeadProps{}) {
 								<tr>
 									@table.Header(table.HeaderProps{}) { From }
-									@table.Header(table.HeaderProps{}) { Topic }
+									@table.Header(table.HeaderProps{Class: "hidden sm:table-cell"}) { Topic }
 									@table.Header(table.HeaderProps{}) { Message }
-									@table.Header(table.HeaderProps{}) { Received }
+									@table.Header(table.HeaderProps{Class: "hidden lg:table-cell"}) { Received }
 									@table.Header(table.HeaderProps{}) { Status }
 									@table.Header(table.HeaderProps{Class: "text-right"}) {
 										<span class="sr-only">Edit</span>
@@ -337,7 +363,7 @@ templ InquiriesSection(status string, inquiries []store.Question) {
 								</tr>
 							}
 							@table.Body(table.BodyProps{}) {
-								for _, q := range inquiries {
+								for _, q := range iv.Inquiries {
 									@InquirySummaryRow(q)
 								}
 							}
@@ -346,18 +372,52 @@ templ InquiriesSection(status string, inquiries []store.Question) {
 				}
 			}
 		</div>
+		@inquiriesPager(iv)
 	</section>
 }
 
+// inquiriesPager shows the result range and Prev/Next paging (htmx, push-url).
+templ inquiriesPager(iv InquiriesView) {
+	if iv.Total > 0 {
+		<div class="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+			<span>{ inquiriesPagerLabel(iv) }</span>
+			<div class="flex items-center gap-2">
+				@inquiriesPagerButton(iv, iv.Page-1, "Prev", iv.Page <= 1)
+				@inquiriesPagerButton(iv, iv.Page+1, "Next", !inquiriesHasNext(iv))
+			</div>
+		</div>
+	}
+}
+
+templ inquiriesPagerButton(iv InquiriesView, page int, label string, disabled bool) {
+	if disabled {
+		@button.Button(button.Props{Plain: true, Disabled: true}) {
+			{ label }
+		}
+	} else {
+		@button.Button(button.Props{Plain: true, Attrs: templ.Attributes{
+			"hx-get":       inquiriesURL(iv.Status, iv.Search, page),
+			"hx-target":    "#inquiries-section",
+			"hx-swap":      "outerHTML",
+			"hx-indicator": "#inquiries-spinner",
+			"hx-push-url":  "true",
+		}}) {
+			{ label }
+		}
+	}
+}
+
 templ InquirySummaryRow(q store.Question) {
-	@table.Row(table.RowProps{Class: rowClickClass, Attrs: rowEditAttrs("/admin/inquiries", "inquiry", q.ID, "Edit inquiry from "+q.Name)}) {
-		@table.Cell(table.CellProps{}) {
+	@table.Row(table.RowProps{Class: inquiryRowClass(q.Status), Attrs: rowEditAttrs("/admin/inquiries", "inquiry", q.ID, "Edit inquiry from "+q.Name)}) {
+		@table.Cell(table.CellProps{Class: inquiryAccentCell(q.Status)}) {
 			<div class="font-medium text-foreground">{ q.Name }</div>
 			<div class="text-xs text-muted-foreground">{ q.Contact }</div>
 		}
-		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { q.Topic } }
+		@table.Cell(table.CellProps{Class: "hidden sm:table-cell"}) {
+			@badge.Badge(badge.Props{Variant: questionTopicVariant(q.Topic)}) { { questionTopicLabel(q.Topic) } }
+		}
 		@table.Cell(table.CellProps{Class: "max-w-xs truncate text-muted-foreground"}) { { truncate(q.Message, 60) } }
-		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { humanDate(q.CreatedAt) } }
+		@table.Cell(table.CellProps{Class: "hidden text-muted-foreground lg:table-cell"}) { { humanDate(q.CreatedAt) } }
 		@table.Cell(table.CellProps{}) {
 			@badge.Badge(badge.Props{Variant: questionStatusVariant(q.Status)}) { { questionStatusLabel(q.Status) } }
 		}
@@ -378,10 +438,11 @@ templ InquiryEditPanel(q store.Question) {
 		>
 			<div class="space-y-1.5 text-sm">
 				<h3 class="font-display text-base text-foreground">{ q.Name }</h3>
-				@adminDetail("Contact", q.Contact)
-				@adminDetail("Topic", q.Topic)
+				@adminContactDetail(q.Contact)
+				@adminDetail("Topic", questionTopicLabel(q.Topic))
 				@adminDetail("Received", humanDateTime(q.CreatedAt))
 				<p class="mt-3 whitespace-pre-line rounded-lg bg-muted p-3 text-foreground">{ q.Message }</p>
+				@inquiryReplyAction(q.Contact)
 			</div>
 			<label class="block">
 				<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
@@ -555,6 +616,55 @@ templ adminDetail(label, value string) {
 		<span class="w-28 shrink-0 text-muted-foreground">{ label }</span>
 		<span class="text-foreground">{ value }</span>
 	</div>
+}
+
+// adminContactDetail is the Contact line in an edit panel. Each email/phone the
+// inquirer left becomes its own mailto:/tel: link so the operator can tap to
+// reply; falls back to plain text when nothing linkable is found.
+templ adminContactDetail(contact string) {
+	<div class="flex gap-2">
+		<span class="w-28 shrink-0 text-muted-foreground">Contact</span>
+		if links := contactLinks(contact); len(links) > 0 {
+			<span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+				for i, l := range links {
+					if i > 0 {
+						<span class="text-muted-foreground" aria-hidden="true">·</span>
+					}
+					<a href={ templ.SafeURL(l.Href) } class="font-medium text-accent underline-offset-2 hover:underline">{ l.Label }</a>
+				}
+			</span>
+		} else {
+			<span class="text-foreground">{ orDash(contact) }</span>
+		}
+	</div>
+}
+
+// inquiryReplyAction is the primary "reply to this person" affordance in the
+// inquiry drawer — one soft accent button per channel the inquirer left (email
+// and/or phone). Hidden when the contact can't be turned into a link.
+templ inquiryReplyAction(contact string) {
+	if links := contactLinks(contact); len(links) > 0 {
+		<div class="mt-3 flex flex-wrap gap-2">
+			for _, l := range links {
+				@replyButton(l)
+			}
+		</div>
+	}
+}
+
+templ replyButton(l ContactLink) {
+	<a
+		href={ templ.SafeURL(l.Href) }
+		class="inline-flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm font-medium text-accent transition hover:bg-accent/10"
+	>
+		if l.Kind == "phone" {
+			@iconPhone("h-4 w-4")
+			Call or text
+		} else {
+			@iconMessage("h-4 w-4")
+			Reply by email
+		}
+	</a>
 }
 
 // adminEditActions is the Save / Cancel pair shared by every edit form. path is

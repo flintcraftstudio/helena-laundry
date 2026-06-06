@@ -153,16 +153,25 @@ func AdminBookingUpdate(st *store.Store) http.HandlerFunc {
 func AdminInquiries(st *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := validStatus(r.URL.Query().Get("status"), questionStatuses)
-		items, err := st.ListQuestions(r.Context(), status, adminListLimit)
+		search := strings.TrimSpace(r.URL.Query().Get("q"))
+		page := pageParam(r)
+		items, total, err := st.ListQuestionsFiltered(r.Context(), store.QuestionFilter{
+			Status: status, Search: search,
+			Limit: adminPageSize, Offset: (page - 1) * adminPageSize,
+		})
 		if err != nil {
 			adminServerError(w, r, "load inquiries", err)
 			return
 		}
+		iv := view.InquiriesView{
+			Status: status, Search: search, Page: page,
+			PageSize: adminPageSize, Total: total, Inquiries: items,
+		}
 		if isHTMX(r) {
-			render(w, r, view.InquiriesSection(status, items))
+			render(w, r, view.InquiriesSection(iv))
 			return
 		}
-		render(w, r, view.AdminInquiriesPage(userEmail(r), status, items))
+		render(w, r, view.AdminInquiriesPage(userEmail(r), iv))
 	}
 }
 

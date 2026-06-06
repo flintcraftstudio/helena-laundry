@@ -133,6 +133,51 @@ func (s *Store) ListQuestions(ctx context.Context, status string, limit int) ([]
 	return out, rows.Err()
 }
 
+// QuestionFilter parameterizes the admin inquiries list: status tab, search box,
+// and pagination. An empty Status or Search means "no filter on that axis".
+type QuestionFilter struct {
+	Status string
+	Search string
+	Limit  int
+	Offset int
+}
+
+// ListQuestionsFiltered returns one page of questions matching the filter, plus
+// the total number of matches (ignoring Limit/Offset) for pagination. Search
+// spans name, contact, and message; ordering is newest first.
+func (s *Store) ListQuestionsFiltered(ctx context.Context, f QuestionFilter) ([]Question, int, error) {
+	where := "WHERE (? = '' OR status = ?)"
+	args := []any{f.Status, f.Status}
+	if f.Search != "" {
+		like := "%" + f.Search + "%"
+		where += " AND (name LIKE ? OR contact LIKE ? OR message LIKE ?)"
+		args = append(args, like, like, like)
+	}
+
+	var total int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM questions "+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	q := `SELECT id, name, contact, topic, message, status, admin_notes, created_at
+		 FROM questions ` + where + " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	rows, err := s.db.QueryContext(ctx, q, append(args, f.Limit, f.Offset)...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var out []Question
+	for rows.Next() {
+		var qq Question
+		if err := rows.Scan(&qq.ID, &qq.Name, &qq.Contact, &qq.Topic, &qq.Message, &qq.Status, &qq.AdminNotes, &qq.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, qq)
+	}
+	return out, total, rows.Err()
+}
+
 // WaitlistEntry is an out-of-area waitlist signup.
 type WaitlistEntry struct {
 	ID         int64
