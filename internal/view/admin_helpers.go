@@ -81,7 +81,25 @@ func bookingsEmptyMsg(bv BookingsView) string {
 	case bv.Status != "":
 		return "No " + strings.ToLower(bookingStatusLabel(bv.Status)) + " pickups right now."
 	default:
-		return "No pickups yet."
+		return "No pickups yet — they'll land here the moment someone books."
+	}
+}
+
+// bookingTimeFlag marks an active booking as "today" or "overdue" by its
+// scheduled date (ISO strings compare lexicographically). Done/empty rows are
+// unflagged. Drives the row emphasis in the pickups table.
+func bookingTimeFlag(b store.Booking) string {
+	if b.ScheduledDate == "" || b.Status == "delivered" || b.Status == "canceled" {
+		return ""
+	}
+	today := time.Now().Format("2006-01-02")
+	switch {
+	case b.ScheduledDate < today:
+		return "overdue"
+	case b.ScheduledDate == today:
+		return "today"
+	default:
+		return ""
 	}
 }
 

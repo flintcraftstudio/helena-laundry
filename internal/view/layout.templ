@@ -58,8 +58,8 @@ templ formSwapScript() {
 			document.body.addEventListener("htmx:afterSwap", function (e) {
 				var scope = e.target;
 				if (!scope || !scope.querySelector) return;
-				var status = scope.querySelector("[data-formstatus]");
-				if (status) status.focus();
+				var focusEl = scope.querySelector("[data-formstatus]") || scope.querySelector("[data-autofocus]");
+				if (focusEl) focusEl.focus();
 				if (window.turnstile) {
 					scope.querySelectorAll(".cf-turnstile").forEach(function (n) {
 						try { window.turnstile.render(n); } catch (err) {}

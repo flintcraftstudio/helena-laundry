@@ -137,6 +137,7 @@ templ BookingsSection(bv BookingsView) {
 				@input.Input(input.Props{
 					Type:         "search",
 					Name:         "q",
+					ID:           "bookings-search",
 					Value:        bv.Search,
 					Placeholder:  "Search name, contact, ZIP…",
 					Autocomplete: "off",
@@ -148,6 +149,7 @@ templ BookingsSection(bv BookingsView) {
 						"hx-swap":      "outerHTML",
 						"hx-indicator": "#bookings-spinner",
 						"hx-push-url":  "true",
+						"hx-preserve":  "true",
 						"aria-label":   "Search pickups",
 					},
 				})
@@ -163,9 +165,9 @@ templ BookingsSection(bv BookingsView) {
 							@table.Head(table.HeadProps{}) {
 								<tr>
 									@table.Header(table.HeaderProps{}) { Customer }
-									@table.Header(table.HeaderProps{}) { Contact }
-									@table.Header(table.HeaderProps{}) { Requested }
-									@table.Header(table.HeaderProps{}) { Plan }
+									@table.Header(table.HeaderProps{Class: "hidden md:table-cell"}) { Contact }
+									@table.Header(table.HeaderProps{Class: "hidden lg:table-cell"}) { Requested }
+									@table.Header(table.HeaderProps{Class: "hidden lg:table-cell"}) { Plan }
 									@table.Header(table.HeaderProps{}) { Scheduled }
 									@table.Header(table.HeaderProps{}) { Status }
 									@table.Header(table.HeaderProps{Class: "text-right"}) { Manage }
@@ -222,10 +224,12 @@ templ BookingSummaryRow(b store.Booking) {
 			<div class="font-medium text-foreground">{ b.Name }</div>
 			<div class="text-xs text-muted-foreground">{ orDash(b.Address) }, { orDash(b.Zip) }</div>
 		}
-		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { b.Contact } }
-		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { b.PickupDay } }
-		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { planShort(b.Plan) } }
-		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { scheduledLabel(b.ScheduledDate, b.PickupWindow) } }
+		@table.Cell(table.CellProps{Class: "hidden text-muted-foreground md:table-cell"}) { { b.Contact } }
+		@table.Cell(table.CellProps{Class: "hidden text-muted-foreground lg:table-cell"}) { { b.PickupDay } }
+		@table.Cell(table.CellProps{Class: "hidden text-muted-foreground lg:table-cell"}) { { planShort(b.Plan) } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+			@scheduledCell(b)
+		}
 		@table.Cell(table.CellProps{}) {
 			@badge.Badge(badge.Props{Variant: bookingStatusVariant(b.Status)}) { { bookingStatusLabel(b.Status) } }
 		}
@@ -233,6 +237,20 @@ templ BookingSummaryRow(b store.Booking) {
 			@button.Button(button.Props{Plain: true, Attrs: editAttrs("/admin/bookings", "booking", b.ID)}) { Manage }
 		}
 	}
+}
+
+// scheduledCell shows the scheduled date/window plus a Today/Overdue pill for
+// active bookings whose date is here or past — the operator's "what needs me".
+templ scheduledCell(b store.Booking) {
+	<div class="flex flex-col items-start gap-1">
+		<span>{ scheduledLabel(b.ScheduledDate, b.PickupWindow) }</span>
+		switch bookingTimeFlag(b) {
+			case "today":
+				@badge.Badge(badge.Props{Variant: badge.VariantAccent}) { Today }
+			case "overdue":
+				@badge.Badge(badge.Props{Variant: badge.VariantDanger}) { Overdue }
+		}
+	</div>
 }
 
 templ BookingEditRow(b store.Booking) {
@@ -259,7 +277,7 @@ templ BookingEditRow(b store.Booking) {
 					<div class="grid grid-cols-2 gap-3">
 						<label class="block">
 							<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-							@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"x-model": "status"}}) {
+							@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"x-model": "status", "data-autofocus": "true"}}) {
 								for _, s := range bookingStatusOrder {
 									<option value={ s } selected?={ s == b.Status }>{ bookingStatusLabel(s) }</option>
 								}
@@ -366,7 +384,7 @@ templ InquiryEditRow(q store.Question) {
 				<div class="space-y-4">
 					<label class="block">
 						<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-						@selectbox.Select(selectbox.Props{Name: "status"}) {
+						@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"data-autofocus": "true"}}) {
 							for _, s := range questionStatusOrder {
 								<option value={ s } selected?={ s == q.Status }>{ questionStatusLabel(s) }</option>
 							}
@@ -464,7 +482,7 @@ templ WaitlistEditRow(e store.WaitlistEntry) {
 				<div class="space-y-4">
 					<label class="block">
 						<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-						@selectbox.Select(selectbox.Props{Name: "status"}) {
+						@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"data-autofocus": "true"}}) {
 							for _, s := range waitlistStatusOrder {
 								<option value={ s } selected?={ s == e.Status }>{ waitlistStatusLabel(s) }</option>
 							}
