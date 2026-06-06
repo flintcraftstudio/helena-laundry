@@ -120,6 +120,12 @@ func Seed(email, password string) error {
 	return sh.Run("go", "run", "./cmd/seed", email, password)
 }
 
+// SeedData wipes and repopulates bookings/questions/waitlist with sample data
+// for exercising the admin dashboard. Leaves users/sessions/settings untouched.
+func SeedData() error {
+	return sh.Run("go", "run", "./cmd/seeddata")
+}
+
 func dbPath() string {
 	if p := os.Getenv("DB_PATH"); p != "" {
 		return p
