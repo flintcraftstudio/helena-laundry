@@ -19,6 +19,8 @@ const (
 	adminRecentLimit = 5
 	adminPageSize    = 25
 	toastSaved       = `{"flint:toast":{"variant":"success","title":"Saved"}}`
+	// toastSavedClose also slides the edit drawer shut (used by the row updates).
+	toastSavedClose = `{"flint:toast":{"variant":"success","title":"Saved"},"admin-drawer-close":true}`
 )
 
 // pageParam reads the 1-based ?page query value, defaulting to 1.
@@ -107,7 +109,7 @@ func AdminBookingEdit(st *store.Store) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		render(w, r, view.BookingEditRow(b))
+		render(w, r, view.BookingEditPanel(b))
 	}
 }
 
@@ -141,7 +143,7 @@ func AdminBookingUpdate(st *store.Store) http.HandlerFunc {
 			adminServerError(w, r, "reload booking", err)
 			return
 		}
-		w.Header().Set("HX-Trigger", toastSaved)
+		w.Header().Set("HX-Trigger", toastSavedClose)
 		render(w, r, view.BookingSummaryRow(b))
 	}
 }
@@ -180,7 +182,7 @@ func AdminInquiryEdit(st *store.Store) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		render(w, r, view.InquiryEditRow(q))
+		render(w, r, view.InquiryEditPanel(q))
 	}
 }
 
@@ -207,7 +209,7 @@ func AdminInquiryUpdate(st *store.Store) http.HandlerFunc {
 			adminServerError(w, r, "reload inquiry", err)
 			return
 		}
-		w.Header().Set("HX-Trigger", toastSaved)
+		w.Header().Set("HX-Trigger", toastSavedClose)
 		render(w, r, view.InquirySummaryRow(q))
 	}
 }
@@ -246,7 +248,7 @@ func AdminWaitlistEdit(st *store.Store) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		render(w, r, view.WaitlistEditRow(e))
+		render(w, r, view.WaitlistEditPanel(e))
 	}
 }
 
@@ -273,7 +275,7 @@ func AdminWaitlistUpdate(st *store.Store) http.HandlerFunc {
 			adminServerError(w, r, "reload waitlist", err)
 			return
 		}
-		w.Header().Set("HX-Trigger", toastSaved)
+		w.Header().Set("HX-Trigger", toastSavedClose)
 		render(w, r, view.WaitlistSummaryRow(e))
 	}
 }

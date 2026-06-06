@@ -255,56 +255,55 @@ templ scheduledCell(b store.Booking) {
 	</div>
 }
 
-templ BookingEditRow(b store.Booking) {
-	<tr id={ rowID("booking", b.ID) } class="bg-muted/40">
-		<td colspan="7" class="px-4 py-5 sm:px-6">
-			<form
-				x-data={ "{ status: '" + b.Status + "' }" }
-				hx-post={ fmt.Sprintf("/admin/bookings/%d", b.ID) }
-				hx-target={ "#" + rowID("booking", b.ID) }
-				hx-swap="outerHTML"
-				hx-disabled-elt="find button[type='submit']"
-				class="grid gap-6 md:grid-cols-2"
-			>
-				<div class="space-y-1.5 text-sm">
-					<h3 class="font-display text-base text-foreground">{ b.Name }</h3>
-					@adminDetail("Address", orDash(b.Address)+", "+orDash(b.Zip))
-					@adminDetail("Contact", b.Contact)
-					@adminDetail("Plan", planShort(b.Plan))
-					@adminDetail("Requested day", b.PickupDay)
-					@adminDetail("Their note", orDash(b.Notes))
-					@adminDetail("Booked", humanDateTime(b.CreatedAt))
-				</div>
-				<div class="space-y-4">
-					<div class="grid grid-cols-2 gap-3">
-						<label class="block">
-							<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-							@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"x-model": "status", "data-autofocus": "true"}}) {
-								for _, s := range bookingStatusOrder {
-									<option value={ s } selected?={ s == b.Status }>{ bookingStatusLabel(s) }</option>
-								}
-							}
-						</label>
-						<label class="block">
-							<span class="mb-1.5 block text-sm font-medium text-foreground">Pickup date</span>
-							@input.Input(input.Props{Type: "date", Name: "scheduled_date", Value: b.ScheduledDate})
-						</label>
-					</div>
-					<label class="block">
-						<span class="mb-1.5 block text-sm font-medium text-foreground">Window</span>
-						@input.Input(input.Props{Name: "pickup_window", Value: b.PickupWindow, Placeholder: "e.g. 9–11am"})
-					</label>
-					<label class="block">
-						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
-						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 2, Value: b.AdminNotes, NonResizable: true})
-					</label>
-					@adminEditActions("/admin/bookings", "booking", b.ID, templ.Attributes{
-						"x-bind:hx-confirm": "status === 'canceled' ? 'Cancel this pickup? It drops off the calendar and the needs-a-date list.' : null",
-					})
-				</div>
-			</form>
-		</td>
-	</tr>
+// BookingEditPanel is the slide-over drawer body for editing one pickup. Save
+// targets the booking's table row (swaps in the refreshed summary) and the
+// handler fires admin-drawer-close to slide the panel shut.
+templ BookingEditPanel(b store.Booking) {
+	@adminPanelShell("Edit pickup") {
+		<form
+			x-data={ "{ status: '" + b.Status + "' }" }
+			hx-post={ fmt.Sprintf("/admin/bookings/%d", b.ID) }
+			hx-target={ "#" + rowID("booking", b.ID) }
+			hx-swap="outerHTML"
+			hx-disabled-elt="find button[type='submit']"
+			class="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5"
+		>
+			<div class="space-y-1.5 text-sm">
+				<h3 class="font-display text-base text-foreground">{ b.Name }</h3>
+				@adminDetail("Address", orDash(b.Address)+", "+orDash(b.Zip))
+				@adminDetail("Contact", b.Contact)
+				@adminDetail("Plan", planShort(b.Plan))
+				@adminDetail("Requested day", b.PickupDay)
+				@adminDetail("Their note", orDash(b.Notes))
+				@adminDetail("Booked", humanDateTime(b.CreatedAt))
+			</div>
+			<div class="grid grid-cols-2 gap-3">
+				<label class="block">
+					<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
+					@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"x-model": "status", "data-autofocus": "true"}}) {
+						for _, s := range bookingStatusOrder {
+							<option value={ s } selected?={ s == b.Status }>{ bookingStatusLabel(s) }</option>
+						}
+					}
+				</label>
+				<label class="block">
+					<span class="mb-1.5 block text-sm font-medium text-foreground">Pickup date</span>
+					@input.Input(input.Props{Type: "date", Name: "scheduled_date", Value: b.ScheduledDate})
+				</label>
+			</div>
+			<label class="block">
+				<span class="mb-1.5 block text-sm font-medium text-foreground">Window</span>
+				@input.Input(input.Props{Name: "pickup_window", Value: b.PickupWindow, Placeholder: "e.g. 9–11am"})
+			</label>
+			<label class="block">
+				<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
+				@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: b.AdminNotes, NonResizable: true})
+			</label>
+			@adminEditActions(templ.Attributes{
+				"x-bind:hx-confirm": "status === 'canceled' ? 'Cancel this pickup? It drops off the calendar and the needs-a-date list.' : null",
+			})
+		</form>
+	}
 }
 
 // ===========================================================================
@@ -368,41 +367,37 @@ templ InquirySummaryRow(q store.Question) {
 	}
 }
 
-templ InquiryEditRow(q store.Question) {
-	<tr id={ rowID("inquiry", q.ID) } class="bg-muted/40">
-		<td colspan="6" class="px-4 py-5 sm:px-6">
-			<form
-				hx-post={ fmt.Sprintf("/admin/inquiries/%d", q.ID) }
-				hx-target={ "#" + rowID("inquiry", q.ID) }
-				hx-swap="outerHTML"
-				hx-disabled-elt="find button[type='submit']"
-				class="grid gap-6 md:grid-cols-2"
-			>
-				<div class="space-y-1.5 text-sm">
-					<h3 class="font-display text-base text-foreground">{ q.Name }</h3>
-					@adminDetail("Contact", q.Contact)
-					@adminDetail("Topic", q.Topic)
-					@adminDetail("Received", humanDateTime(q.CreatedAt))
-					<p class="mt-3 whitespace-pre-line rounded-lg bg-surface p-3 text-foreground">{ q.Message }</p>
-				</div>
-				<div class="space-y-4">
-					<label class="block">
-						<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-						@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"data-autofocus": "true"}}) {
-							for _, s := range questionStatusOrder {
-								<option value={ s } selected?={ s == q.Status }>{ questionStatusLabel(s) }</option>
-							}
-						}
-					</label>
-					<label class="block">
-						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
-						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: q.AdminNotes, NonResizable: true})
-					</label>
-					@adminEditActions("/admin/inquiries", "inquiry", q.ID, nil)
-				</div>
-			</form>
-		</td>
-	</tr>
+templ InquiryEditPanel(q store.Question) {
+	@adminPanelShell("Edit inquiry") {
+		<form
+			hx-post={ fmt.Sprintf("/admin/inquiries/%d", q.ID) }
+			hx-target={ "#" + rowID("inquiry", q.ID) }
+			hx-swap="outerHTML"
+			hx-disabled-elt="find button[type='submit']"
+			class="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5"
+		>
+			<div class="space-y-1.5 text-sm">
+				<h3 class="font-display text-base text-foreground">{ q.Name }</h3>
+				@adminDetail("Contact", q.Contact)
+				@adminDetail("Topic", q.Topic)
+				@adminDetail("Received", humanDateTime(q.CreatedAt))
+				<p class="mt-3 whitespace-pre-line rounded-lg bg-muted p-3 text-foreground">{ q.Message }</p>
+			</div>
+			<label class="block">
+				<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
+				@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"data-autofocus": "true"}}) {
+					for _, s := range questionStatusOrder {
+						<option value={ s } selected?={ s == q.Status }>{ questionStatusLabel(s) }</option>
+					}
+				}
+			</label>
+			<label class="block">
+				<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
+				@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: q.AdminNotes, NonResizable: true})
+			</label>
+			@adminEditActions(nil)
+		</form>
+	}
 }
 
 // ===========================================================================
@@ -467,42 +462,38 @@ templ WaitlistSummaryRow(e store.WaitlistEntry) {
 	}
 }
 
-templ WaitlistEditRow(e store.WaitlistEntry) {
-	<tr id={ rowID("waitlist", e.ID) } class="bg-muted/40">
-		<td colspan="7" class="px-4 py-5 sm:px-6">
-			<form
-				hx-post={ fmt.Sprintf("/admin/waitlist/%d", e.ID) }
-				hx-target={ "#" + rowID("waitlist", e.ID) }
-				hx-swap="outerHTML"
-				hx-disabled-elt="find button[type='submit']"
-				class="grid gap-6 md:grid-cols-2"
-			>
-				<div class="space-y-1.5 text-sm">
-					<h3 class="font-display text-base text-foreground">{ e.Name }</h3>
-					@adminDetail("Where", e.Location)
-					@adminDetail("Contact", e.Contact)
-					@adminDetail("Kind", e.Kind)
-					@adminDetail("Joined", humanDateTime(e.CreatedAt))
-					@adminDetail("Their note", orDash(e.Notes))
-				</div>
-				<div class="space-y-4">
-					<label class="block">
-						<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-						@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"data-autofocus": "true"}}) {
-							for _, s := range waitlistStatusOrder {
-								<option value={ s } selected?={ s == e.Status }>{ waitlistStatusLabel(s) }</option>
-							}
-						}
-					</label>
-					<label class="block">
-						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
-						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: e.AdminNotes, NonResizable: true})
-					</label>
-					@adminEditActions("/admin/waitlist", "waitlist", e.ID, nil)
-				</div>
-			</form>
-		</td>
-	</tr>
+templ WaitlistEditPanel(e store.WaitlistEntry) {
+	@adminPanelShell("Edit waitlist entry") {
+		<form
+			hx-post={ fmt.Sprintf("/admin/waitlist/%d", e.ID) }
+			hx-target={ "#" + rowID("waitlist", e.ID) }
+			hx-swap="outerHTML"
+			hx-disabled-elt="find button[type='submit']"
+			class="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5"
+		>
+			<div class="space-y-1.5 text-sm">
+				<h3 class="font-display text-base text-foreground">{ e.Name }</h3>
+				@adminDetail("Where", e.Location)
+				@adminDetail("Contact", e.Contact)
+				@adminDetail("Kind", e.Kind)
+				@adminDetail("Joined", humanDateTime(e.CreatedAt))
+				@adminDetail("Their note", orDash(e.Notes))
+			</div>
+			<label class="block">
+				<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
+				@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"data-autofocus": "true"}}) {
+					for _, s := range waitlistStatusOrder {
+						<option value={ s } selected?={ s == e.Status }>{ waitlistStatusLabel(s) }</option>
+					}
+				}
+			</label>
+			<label class="block">
+				<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
+				@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: e.AdminNotes, NonResizable: true})
+			</label>
+			@adminEditActions(nil)
+		</form>
+	}
 }
 
 // ===========================================================================
@@ -568,20 +559,37 @@ templ adminDetail(label, value string) {
 
 // adminEditActions is the Save / Cancel pair shared by every edit form. path is
 // the resource collection URL (e.g. "/admin/bookings"); kind is the row-id prefix.
-templ adminEditActions(path, kind string, id int64, saveAttrs templ.Attributes) {
+// adminEditActions is the Save / Cancel pair shared by the edit drawers. Save
+// submits the form (saveAttrs lets a form add e.g. a conditional hx-confirm);
+// Cancel just slides the drawer shut.
+templ adminEditActions(saveAttrs templ.Attributes) {
 	<div class="flex items-center gap-3 pt-1">
 		@button.Button(button.Props{Variant: button.VariantAccent, Type: "submit", Attrs: saveAttrs}) {
 			Save
 			@iconSpinner("form-spinner ml-1 h-4 w-4 animate-spin")
 		}
-		@button.Button(button.Props{Plain: true, Attrs: templ.Attributes{
-			"hx-get":    fmt.Sprintf("%s/%d", path, id),
-			"hx-target": "#" + rowID(kind, id),
-			"hx-swap":   "outerHTML",
+		@button.Button(button.Props{Plain: true, Type: "button", Attrs: templ.Attributes{
+			"@click": "$store.drawer.open = false",
 		}}) {
 			Cancel
 		}
 	</div>
+}
+
+// adminPanelShell is the drawer header (title + close) above an edit form.
+templ adminPanelShell(title string) {
+	<div class="flex items-center justify-between border-b border-border px-6 py-4">
+		<h2 class="font-display text-lg text-foreground">{ title }</h2>
+		<button
+			type="button"
+			@click="$store.drawer.open = false"
+			aria-label="Close"
+			class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+		>
+			<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+		</button>
+	</div>
+	{ children... }
 }
 
 templ adminEmpty(msg string) {
@@ -608,8 +616,8 @@ func rowEditAttrs(path, kind string, id int64, label string) templ.Attributes {
 	return templ.Attributes{
 		"id":         rowID(kind, id),
 		"hx-get":     fmt.Sprintf("%s/%d/edit", path, id),
-		"hx-target":  "#" + rowID(kind, id),
-		"hx-swap":    "outerHTML",
+		"hx-target":  "#admin-drawer-body",
+		"hx-swap":    "innerHTML",
 		"hx-trigger": "click, keyup[key=='Enter']",
 		"tabindex":   "0",
 		"role":       "button",
