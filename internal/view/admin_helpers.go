@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -293,7 +294,9 @@ func questionTopicLabel(s string) string          { return questionTopicMetaOr(s
 func questionTopicVariant(s string) badge.Variant { return questionTopicMetaOr(s).Variant }
 
 var waitlistStatusMeta = map[string]statusMeta{
-	"new":       {"New", badge.VariantWarning},
+	// A new out-of-area signup is an opportunity (where to grow next), not a
+	// problem — accent rust, not warning amber.
+	"new":       {"New", badge.VariantAccent},
 	"contacted": {"Contacted", badge.VariantSuccess},
 	"archived":  {"Archived", badge.VariantMuted},
 }
@@ -311,6 +314,178 @@ func questionStatusLabel(s string) string          { return metaOr(questionStatu
 func questionStatusVariant(s string) badge.Variant { return metaOr(questionStatusMeta, s).Variant }
 func waitlistStatusLabel(s string) string          { return metaOr(waitlistStatusMeta, s).Label }
 func waitlistStatusVariant(s string) badge.Variant { return metaOr(waitlistStatusMeta, s).Variant }
+
+// ---------------------------------------------------------------------------
+// Waitlist demand view — turns the flat signup list into "where to grow next".
+// ---------------------------------------------------------------------------
+
+// waitlistTopAreas caps how many areas the demand band shows before collapsing
+// the rest into a "+N more" note (kept scannable; the full set is in the table).
+const waitlistTopAreas = 6
+
+// AreaDemand is one location's pull: how many people are waiting there and how
+// many of them are businesses (the higher-value, standing-pickup leads).
+type AreaDemand struct {
+	Label    string // location as the signer typed it (first seen)
+	Key      string // case-folded location, used for matching + the ?loc= filter
+	Count    int
+	Business int
+}
+
+// WaitlistView is everything the waitlist section needs: the active status tab,
+// the active location filter ("" = all areas), the table rows (status- AND
+// location-filtered), and the demand band (aggregated over the status-filtered
+// set only, so picking an area never collapses the band to one chip).
+type WaitlistView struct {
+	Status    string
+	Loc       string
+	Entries   []store.WaitlistEntry
+	Areas     []AreaDemand
+	MoreAreas int // distinct areas beyond the ones shown in the band
+	Waiting   int // total entries in the status-filtered set
+}
+
+// NewWaitlistView aggregates the demand band from the full status-filtered set,
+// then narrows the table rows to the active location. items is already limited +
+// status-filtered by the store; this adds no DB hit.
+func NewWaitlistView(status, loc string, items []store.WaitlistEntry) WaitlistView {
+	loc = normalizeLoc(loc)
+	areas, totalAreas := topAreas(items, waitlistTopAreas)
+
+	entries := items
+	if loc != "" {
+		filtered := make([]store.WaitlistEntry, 0, len(items))
+		for _, e := range items {
+			if normalizeLoc(e.Location) == loc {
+				filtered = append(filtered, e)
+			}
+		}
+		entries = filtered
+	}
+
+	return WaitlistView{
+		Status:    status,
+		Loc:       loc,
+		Entries:   entries,
+		Areas:     areas,
+		MoreAreas: totalAreas - len(areas),
+		Waiting:   len(items),
+	}
+}
+
+// topAreas groups entries by location (case-folded), busiest first, and returns
+// the top n plus the total distinct-area count so the view can say how many were
+// left off. Entries with a blank location are skipped — they tell us nothing
+// about where to head next.
+func topAreas(entries []store.WaitlistEntry, n int) (top []AreaDemand, total int) {
+	idx := map[string]int{}
+	var all []AreaDemand
+	for _, e := range entries {
+		key := normalizeLoc(e.Location)
+		if key == "" {
+			continue
+		}
+		i, ok := idx[key]
+		if !ok {
+			i = len(all)
+			idx[key] = i
+			all = append(all, AreaDemand{Label: strings.TrimSpace(e.Location), Key: key})
+		}
+		all[i].Count++
+		if e.Kind == "business" {
+			all[i].Business++
+		}
+	}
+	sort.SliceStable(all, func(i, j int) bool { return all[i].Count > all[j].Count })
+	if n < len(all) {
+		return all[:n], len(all)
+	}
+	return all, len(all)
+}
+
+// waitlistKindLabel turns the stored kind code into a display label. Anything
+// that isn't an explicit "business" is treated as residential (matches the
+// submit handler, which defaults non-business to residential).
+func waitlistKindLabel(kind string) string {
+	if kind == "business" {
+		return "Business"
+	}
+	return "Residential"
+}
+
+// normalizeLoc folds a location to its grouping/URL key. Free-typed locations
+// won't always agree ("E. Helena" vs "East Helena") — this only collapses the
+// easy cases (whitespace + casing); it deliberately doesn't guess at the rest.
+func normalizeLoc(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
+
+// areaSplit phrases an area's residential/business mix in a few words.
+func areaSplit(a AreaDemand) string {
+	switch {
+	case a.Business == 0:
+		return "all residential"
+	case a.Business == a.Count:
+		return "all business"
+	default:
+		return fmt.Sprintf("%d business", a.Business)
+	}
+}
+
+// waitlistBandSummary is the band's one-line gloss, e.g. "12 people across 4 areas".
+func waitlistBandSummary(wv WaitlistView) string {
+	areas := len(wv.Areas) + wv.MoreAreas
+	return fmt.Sprintf("%d %s across %d %s",
+		wv.Waiting, plural(wv.Waiting, "person", "people"),
+		areas, plural(areas, "area", "areas"))
+}
+
+// waitlistTabExtra carries the active location filter across a status-tab switch.
+func waitlistTabExtra(loc string) string {
+	if loc == "" {
+		return ""
+	}
+	return "loc=" + url.QueryEscape(loc)
+}
+
+// waitlistAreaURL builds a demand-chip's hx-get: the current status plus the
+// area's location key (empty key = the "All areas" reset).
+func waitlistAreaURL(status, key string) string {
+	q := url.Values{}
+	if status != "" {
+		q.Set("status", status)
+	}
+	if key != "" {
+		q.Set("loc", key)
+	}
+	if enc := q.Encode(); enc != "" {
+		return "/admin/waitlist?" + enc
+	}
+	return "/admin/waitlist"
+}
+
+// waitlistEmptyMsg is the contextual empty state — it names why the view is empty
+// (a location filter or a status tab) rather than a flat "nothing here".
+func waitlistEmptyMsg(wv WaitlistView) string {
+	switch {
+	case wv.Loc != "":
+		return "Nobody from that area in this view."
+	case wv.Status == "contacted":
+		return "Nobody's marked contacted yet."
+	case wv.Status == "archived":
+		return "Nothing archived yet."
+	case wv.Status == "new":
+		return "No new signups right now — this fills as out-of-area folks raise a hand."
+	default:
+		return "No waitlist signups yet. When someone outside the route signs up, this is where you'll see where to head next."
+	}
+}
+
+// plural picks the singular or plural word for n.
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
 
 // humanDate renders a date like "Jun 5, 2026".
 func humanDate(t time.Time) string { return t.Format("Jan 2, 2006") }

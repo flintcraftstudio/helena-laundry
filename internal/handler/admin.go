@@ -228,16 +228,18 @@ func AdminInquiryUpdate(st *store.Store) http.HandlerFunc {
 func AdminWaitlist(st *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := validStatus(r.URL.Query().Get("status"), waitlistStatuses)
+		loc := strings.TrimSpace(r.URL.Query().Get("loc"))
 		items, err := st.ListWaitlist(r.Context(), status, adminListLimit)
 		if err != nil {
 			adminServerError(w, r, "load waitlist", err)
 			return
 		}
+		wv := view.NewWaitlistView(status, loc, items)
 		if isHTMX(r) {
-			render(w, r, view.WaitlistSection(status, items))
+			render(w, r, view.WaitlistSection(wv))
 			return
 		}
-		render(w, r, view.AdminWaitlistPage(userEmail(r), status, items))
+		render(w, r, view.AdminWaitlistPage(userEmail(r), wv))
 	}
 }
 

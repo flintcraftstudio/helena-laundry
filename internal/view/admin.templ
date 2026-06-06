@@ -442,7 +442,7 @@ templ InquiryEditPanel(q store.Question) {
 				@adminDetail("Topic", questionTopicLabel(q.Topic))
 				@adminDetail("Received", humanDateTime(q.CreatedAt))
 				<p class="mt-3 whitespace-pre-line rounded-lg bg-muted p-3 text-foreground">{ q.Message }</p>
-				@inquiryReplyAction(q.Contact)
+				@contactReplyActions(q.Contact)
 			</div>
 			<label class="block">
 				<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
@@ -465,18 +465,19 @@ templ InquiryEditPanel(q store.Question) {
 // Waitlist
 // ===========================================================================
 
-templ AdminWaitlistPage(userEmail, status string, entries []store.WaitlistEntry) {
-	@AdminBase("Waitlist", userEmail, "waitlist", adminSectionIntro("Out-of-area waitlist", "Demand outside the current route — where to grow next.", WaitlistSection(status, entries)))
+templ AdminWaitlistPage(userEmail string, wv WaitlistView) {
+	@AdminBase("Waitlist", userEmail, "waitlist", adminSectionIntro("Out-of-area waitlist", "Demand outside the current route — where to grow next.", WaitlistSection(wv)))
 }
 
-templ WaitlistSection(status string, entries []store.WaitlistEntry) {
+templ WaitlistSection(wv WaitlistView) {
 	<section id="waitlist-section">
-		@adminFilterTabs("waitlist-section", "/admin/waitlist", status, waitlistStatusOrder, waitlistStatusLabel, "", "")
-		<div class="mt-4">
+		@adminFilterTabs("waitlist-section", "/admin/waitlist", wv.Status, waitlistStatusOrder, waitlistStatusLabel, waitlistTabExtra(wv.Loc), "")
+		<div class="mt-5">
+			@waitlistDemandBand(wv)
 			@card.Card(card.Props{}) {
 				@card.Body(card.SubProps{}) {
-					if len(entries) == 0 {
-						@adminEmpty("No waitlist signups here yet.")
+					if len(wv.Entries) == 0 {
+						@adminEmpty(waitlistEmptyMsg(wv))
 					} else {
 						@table.Table(table.Props{}) {
 							@table.Head(table.HeadProps{}) {
@@ -493,7 +494,7 @@ templ WaitlistSection(status string, entries []store.WaitlistEntry) {
 								</tr>
 							}
 							@table.Body(table.BodyProps{}) {
-								for _, e := range entries {
+								for _, e := range wv.Entries {
 									@WaitlistSummaryRow(e)
 								}
 							}
@@ -505,6 +506,74 @@ templ WaitlistSection(status string, entries []store.WaitlistEntry) {
 	</section>
 }
 
+// waitlistDemandBand answers the question the section promises — "where to grow
+// next" — by ranking the active set's locations by how many people are waiting,
+// with the higher-value business count called out. Each area is a filter: tap to
+// narrow the table to just that place. The band itself always reflects the full
+// status-filtered set, so narrowing never collapses it.
+templ waitlistDemandBand(wv WaitlistView) {
+	if len(wv.Areas) > 0 {
+		<div class="mb-5">
+			<div class="flex items-baseline justify-between gap-3">
+				<p class="text-[11px] font-semibold uppercase tracking-caps text-hl-teal-deep">Where demand is</p>
+				<p class="text-sm text-muted-foreground">{ waitlistBandSummary(wv) }</p>
+			</div>
+			<div class="mt-3 flex gap-2.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+				if wv.Loc != "" {
+					@waitlistAreaReset(wv.Status)
+				}
+				for _, a := range wv.Areas {
+					@waitlistAreaChip(wv.Status, wv.Loc, a)
+				}
+				if wv.MoreAreas > 0 {
+					<span class="flex shrink-0 items-center px-1 text-sm text-muted-foreground">
+						{ fmt.Sprintf("+%d more in the list below", wv.MoreAreas) }
+					</span>
+				}
+			</div>
+		</div>
+	}
+}
+
+// waitlistAreaChip is one tappable area in the demand band: location, the count
+// in the rust accent (color concentrates on the number that matters), and the
+// residential/business split underneath.
+templ waitlistAreaChip(status, activeLoc string, a AreaDemand) {
+	<button
+		type="button"
+		hx-get={ waitlistAreaURL(status, a.Key) }
+		hx-target="#waitlist-section"
+		hx-swap="outerHTML"
+		hx-push-url="true"
+		aria-pressed={ ariaPressed(a.Key == activeLoc) }
+		class={ "flex shrink-0 flex-col gap-0.5 rounded-xl border px-4 py-2.5 text-left transition",
+			templ.KV("border-accent bg-accent/10", a.Key == activeLoc),
+			templ.KV("border-border bg-surface hover:border-accent/40 hover:bg-muted/50", a.Key != activeLoc) }
+	>
+		<span class="text-sm font-medium text-foreground">{ a.Label }</span>
+		<span class="flex items-baseline gap-1.5">
+			<span class="font-display text-xl leading-none text-accent">{ fmt.Sprintf("%d", a.Count) }</span>
+			<span class="text-xs text-muted-foreground">{ areaSplit(a) }</span>
+		</span>
+	</button>
+}
+
+// waitlistAreaReset clears the location filter, returning the table to the full
+// status-filtered set. Shown only while an area is selected.
+templ waitlistAreaReset(status string) {
+	<button
+		type="button"
+		hx-get={ waitlistAreaURL(status, "") }
+		hx-target="#waitlist-section"
+		hx-swap="outerHTML"
+		hx-push-url="true"
+		class="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
+	>
+		@iconArrowRight("h-4 w-4 rotate-180")
+		All areas
+	</button>
+}
+
 templ WaitlistSummaryRow(e store.WaitlistEntry) {
 	@table.Row(table.RowProps{Class: rowClickClass, Attrs: rowEditAttrs("/admin/waitlist", "waitlist", e.ID, "Edit waitlist entry for "+e.Name)}) {
 		@table.Cell(table.CellProps{}) {
@@ -512,7 +581,7 @@ templ WaitlistSummaryRow(e store.WaitlistEntry) {
 		}
 		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { e.Location } }
 		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { e.Contact } }
-		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { e.Kind } }
+		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { waitlistKindLabel(e.Kind) } }
 		@table.Cell(table.CellProps{Class: "text-muted-foreground"}) { { humanDate(e.CreatedAt) } }
 		@table.Cell(table.CellProps{}) {
 			@badge.Badge(badge.Props{Variant: waitlistStatusVariant(e.Status)}) { { waitlistStatusLabel(e.Status) } }
@@ -534,11 +603,14 @@ templ WaitlistEditPanel(e store.WaitlistEntry) {
 		>
 			<div class="space-y-1.5 text-sm">
 				<h3 class="font-display text-base text-foreground">{ e.Name }</h3>
+				@adminContactDetail(e.Contact)
 				@adminDetail("Where", e.Location)
-				@adminDetail("Contact", e.Contact)
-				@adminDetail("Kind", e.Kind)
+				@adminDetail("Kind", waitlistKindLabel(e.Kind))
 				@adminDetail("Joined", humanDateTime(e.CreatedAt))
-				@adminDetail("Their note", orDash(e.Notes))
+				if e.Notes != "" {
+					<p class="mt-3 whitespace-pre-line rounded-lg bg-muted p-3 text-foreground">{ e.Notes }</p>
+				}
+				@contactReplyActions(e.Contact)
 			</div>
 			<label class="block">
 				<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
@@ -639,10 +711,10 @@ templ adminContactDetail(contact string) {
 	</div>
 }
 
-// inquiryReplyAction is the primary "reply to this person" affordance in the
-// inquiry drawer — one soft accent button per channel the inquirer left (email
-// and/or phone). Hidden when the contact can't be turned into a link.
-templ inquiryReplyAction(contact string) {
+// contactReplyActions is the primary "reach this person" affordance shared by the
+// inquiry and waitlist drawers — one soft accent button per channel they left
+// (email and/or phone). Hidden when the contact can't be turned into a link.
+templ contactReplyActions(contact string) {
 	if links := contactLinks(contact); len(links) > 0 {
 		<div class="mt-3 flex flex-wrap gap-2">
 			for _, l := range links {
