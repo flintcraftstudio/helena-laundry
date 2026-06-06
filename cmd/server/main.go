@@ -18,6 +18,7 @@ import (
 	"github.com/firefly-software-mt/advanced-template/internal/mail"
 	"github.com/firefly-software-mt/advanced-template/internal/middleware"
 	"github.com/firefly-software-mt/advanced-template/internal/session"
+	"github.com/firefly-software-mt/advanced-template/internal/settings"
 	"github.com/firefly-software-mt/advanced-template/internal/store"
 	"github.com/firefly-software-mt/advanced-template/internal/view"
 
@@ -89,6 +90,18 @@ func main() {
 	// Store
 	st := store.New(db)
 
+	// Load site settings into the in-memory cache + the view package vars. These
+	// drive the booking flow (service area, days, pricing, accepting toggle) and
+	// the public site's identity, and are refreshed when the operator saves.
+	initialSettings, err := st.GetSettings(context.Background())
+	if err != nil {
+		slog.Error("settings load error", "err", err)
+		os.Exit(1)
+	}
+	settings.Set(initialSettings)
+	view.ApplySettings(initialSettings)
+	slog.Info("settings loaded", "accepting", initialSettings.AcceptingBookings, "zips", initialSettings.AllowedZips)
+
 	// Mail client (nil if Postmark is not configured)
 	var mailer *mail.Client
 	if cfg.PostmarkToken != "" {
@@ -97,13 +110,6 @@ func main() {
 	} else {
 		slog.Info("postmark not configured, contact form emails disabled")
 	}
-
-	// Service-area ZIP allowlist for the booking modal (out-of-area -> waitlist).
-	allowedZips := make(map[string]bool, len(cfg.AllowedZips))
-	for _, z := range cfg.AllowedZips {
-		allowedZips[z] = true
-	}
-	slog.Info("booking service area", "zips", cfg.AllowedZips)
 
 	mux := http.NewServeMux()
 
@@ -120,7 +126,7 @@ func main() {
 	// Contact forms (deliberately distinct capture paths)
 	mux.Handle("POST /contact/question", handler.QuestionSubmit(st, mailer, cfg.TurnstileSecretKey))
 	mux.Handle("POST /contact/waitlist", handler.WaitlistSubmit(st, mailer, cfg.TurnstileSecretKey))
-	mux.Handle("POST /contact/booking", handler.BookingSubmit(st, mailer, cfg.TurnstileSecretKey, allowedZips))
+	mux.Handle("POST /contact/booking", handler.BookingSubmit(st, mailer, cfg.TurnstileSecretKey))
 
 	// Auth
 	mux.Handle("GET /login", handler.LoginPage())
@@ -141,6 +147,8 @@ func main() {
 	mux.Handle("GET /admin/inquiries/{id}", protected(handler.AdminInquiryRow(st)))
 	mux.Handle("GET /admin/inquiries/{id}/edit", protected(handler.AdminInquiryEdit(st)))
 	mux.Handle("POST /admin/inquiries/{id}", protected(handler.AdminInquiryUpdate(st)))
+	mux.Handle("GET /admin/settings", protected(handler.AdminSettings(st)))
+	mux.Handle("POST /admin/settings", protected(handler.AdminSettingsUpdate(st)))
 	mux.Handle("GET /admin/waitlist", protected(handler.AdminWaitlist(st)))
 	mux.Handle("GET /admin/waitlist/{id}", protected(handler.AdminWaitlistRow(st)))
 	mux.Handle("GET /admin/waitlist/{id}/edit", protected(handler.AdminWaitlistEdit(st)))

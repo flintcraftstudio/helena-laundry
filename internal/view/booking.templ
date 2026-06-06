@@ -178,10 +178,10 @@ templ BookingModal() {
 					<!-- Step 2: plan + details -->
 					<div x-show="step === 1" x-cloak class="flex flex-col gap-3">
 						<span class="text-[14px] font-semibold text-hl-brown">Pick a plan</span>
-						@bookingPlan("standard", "Wash, dry, fold & hang", "$2.00/lb · one-time pickup")
-						@bookingPlan("weekly", "Standing weekly pickup", "$2.00/lb · same day each week")
-						@bookingPlan("rush", "Rush", "$3.00/lb · back in 24 hours")
-						<p class="-mt-0.5 text-[13px] text-hl-brown-faint">$35 minimum order — about one full trash bag. I'll weigh it and tell you the exact number.</p>
+						@bookingPlan("standard", "Wash, dry, fold & hang", "$"+LbRate+"/lb · one-time pickup")
+						@bookingPlan("weekly", "Standing weekly pickup", "$"+LbRate+"/lb · same day each week")
+						@bookingPlan("rush", "Rush", "$"+RushRate+"/lb · back in 24 hours")
+						<p class="-mt-0.5 text-[13px] text-hl-brown-faint">${ MinimumOrder } minimum order — about one full trash bag. I'll weigh it and tell you the exact number.</p>
 						<label class="mt-1 flex flex-col gap-1.5">
 							<span class="text-[14px] font-semibold text-hl-brown">Pickup address</span>
 							<input

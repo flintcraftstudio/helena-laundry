@@ -92,10 +92,10 @@ templ adminSidebarInner(active string) {
 			@adminNavItem("/admin/waitlist", "waitlist", active, "Waitlist") {
 				@iconMapPin("h-[18px] w-[18px]")
 			}
-			<div class="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">Soon</div>
-			@adminNavSoon("Settings") {
+			@adminNavItem("/admin/settings", "settings", active, "Settings") {
 				@iconSparkle("h-[18px] w-[18px]")
 			}
+			<div class="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">Soon</div>
 			@adminNavSoon("Billing") {
 				@iconCheck("h-[18px] w-[18px]")
 			}
