@@ -36,7 +36,7 @@ func LoginSubmit(s *store.Store) http.HandlerFunc {
 		password := r.FormValue("password")
 
 		if email == "" || password == "" {
-			if err := view.LoginForm("Email and password are required.", email).Render(r.Context(), w); err != nil {
+			if err := view.LoginForm("I'll need both your email and password.", email).Render(r.Context(), w); err != nil {
 				slog.Error("render error", "err", err)
 			}
 			return
@@ -44,14 +44,14 @@ func LoginSubmit(s *store.Store) http.HandlerFunc {
 
 		userID, _, passwordHash, err := s.GetUserByEmail(r.Context(), email)
 		if err != nil {
-			if err := view.LoginForm("Invalid email or password.", email).Render(r.Context(), w); err != nil {
+			if err := view.LoginForm("That email and password didn't match. Give it another go.", email).Render(r.Context(), w); err != nil {
 				slog.Error("render error", "err", err)
 			}
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
-			if err := view.LoginForm("Invalid email or password.", email).Render(r.Context(), w); err != nil {
+			if err := view.LoginForm("That email and password didn't match. Give it another go.", email).Render(r.Context(), w); err != nil {
 				slog.Error("render error", "err", err)
 			}
 			return
@@ -59,7 +59,7 @@ func LoginSubmit(s *store.Store) http.HandlerFunc {
 
 		if err := session.Create(r.Context(), w, s, userID); err != nil {
 			slog.Error("session create error", "err", err)
-			if err := view.LoginForm("Something went wrong. Please try again.", email).Render(r.Context(), w); err != nil {
+			if err := view.LoginForm("Something went sideways on my end. Try again in a moment.", email).Render(r.Context(), w); err != nil {
 				slog.Error("render error", "err", err)
 			}
 			return

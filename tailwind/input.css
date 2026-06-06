@@ -156,6 +156,13 @@
     text-decoration-thickness: 2px;
   }
 
+  /* Shared text-input style — used by the contact form fields and the login
+     form so they never drift apart. Error state overrides the border with a
+     border-hl-rust/70 utility (utilities layer wins over this components rule). */
+  .hl-input {
+    @apply w-full rounded-xl border border-hl-brown/20 bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust;
+  }
+
   /* Twin border-rule echoing the badge's double ring */
   .rule-double {
     position: relative;

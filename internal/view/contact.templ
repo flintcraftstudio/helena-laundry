@@ -81,25 +81,6 @@ templ contactContent(qErrors, qValues map[string]string, qSuccess bool, wErrors,
 			</div>
 		</div>
 	</section>
-	<script>
-		// After an htmx form swap, move focus to the new status region (error
-		// summary or success confirmation) so keyboard + screen-reader users are
-		// told what happened, and re-render any Turnstile widget the swap brought in
-		// (Cloudflare's implicit render only runs on full page load).
-		(function () {
-			document.body.addEventListener("htmx:afterSwap", function (e) {
-				var scope = e.target;
-				if (!scope || !scope.querySelector) return;
-				var status = scope.querySelector("[data-formstatus]");
-				if (status) status.focus();
-				if (window.turnstile) {
-					scope.querySelectorAll(".cf-turnstile").forEach(function (n) {
-						try { window.turnstile.render(n); } catch (err) {}
-					});
-				}
-			});
-		})();
-	</script>
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +179,7 @@ templ fieldText(id, name, label, placeholder, value, err string, required bool) 
 				aria-invalid="true"
 				aria-describedby={ id + "-err" }
 			}
-			class={ "w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust", templ.KV("border-hl-rust/70", err != ""), templ.KV("border-hl-brown/20", err == "") }
+			class={ "hl-input", templ.KV("border-hl-rust/70", err != "") }
 		/>
 		if err != "" {
 			@fieldErr(id + "-err", err)
@@ -224,7 +205,7 @@ templ fieldTextarea(id, name, label, placeholder, value, err string, required bo
 				aria-invalid="true"
 				aria-describedby={ id + "-err" }
 			}
-			class={ "w-full rounded-xl border bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust", templ.KV("border-hl-rust/70", err != ""), templ.KV("border-hl-brown/20", err == "") }
+			class={ "hl-input", templ.KV("border-hl-rust/70", err != "") }
 		>{ value }</textarea>
 		if err != "" {
 			@fieldErr(id + "-err", err)
@@ -289,9 +270,11 @@ templ fieldErr(id, err string) {
 	<p id={ id } class="mt-1 text-[13px] text-hl-rust">{ err }</p>
 }
 
-// formError is a single form-level error banner (used by the login form).
+// formError is a single form-level error banner (used by the login form). Like
+// formErrorSummary it is focusable + role="alert" so the layout's afterSwap
+// script moves focus here and screen readers announce it.
 templ formError(msg string) {
-	<div class="rounded-xl border border-hl-rust/40 bg-hl-rust/[0.07] p-4">
+	<div data-formstatus tabindex="-1" role="alert" class="rounded-xl border border-hl-rust/40 bg-hl-rust/[0.07] p-4 outline-none">
 		<p class="text-[14px] text-hl-rust-deep">{ msg }</p>
 	</div>
 }

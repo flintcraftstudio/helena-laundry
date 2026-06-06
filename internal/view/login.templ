@@ -30,22 +30,45 @@ templ LoginForm(errMsg, email string) {
 				id="email"
 				name="email"
 				value={ email }
-				class="w-full rounded-xl border border-hl-brown/20 bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust"
+				class="hl-input"
 				placeholder="you@example.com"
+				autocomplete="username"
+				autofocus
 				required
 			/>
 		</div>
 		<div>
 			<label for="password" class="mb-1.5 block text-[14px] font-semibold text-hl-brown">Password</label>
-			<input
-				type="password"
-				id="password"
-				name="password"
-				class="w-full rounded-xl border border-hl-brown/20 bg-hl-white px-4 py-3 text-[16px] text-hl-brown placeholder-hl-brown-faint outline-none transition focus:border-hl-rust"
-				placeholder="Enter your password"
-				required
-			/>
+			<div class="relative" x-data="{ show: false }">
+				<input
+					type="password"
+					:type="show ? 'text' : 'password'"
+					id="password"
+					name="password"
+					class="hl-input pr-12"
+					placeholder="Enter your password"
+					autocomplete="current-password"
+					required
+				/>
+				<button
+					type="button"
+					@click="show = !show"
+					:aria-label="show ? 'Hide password' : 'Show password'"
+					:aria-pressed="show"
+					class="absolute inset-y-0 right-0 flex items-center px-3.5 text-hl-brown-soft transition hover:text-hl-rust-deep"
+				>
+					<span x-show="!show">
+						@iconEye("h-5 w-5")
+					</span>
+					<span x-show="show" x-cloak>
+						@iconEyeOff("h-5 w-5")
+					</span>
+				</button>
+			</div>
 		</div>
 		@submitButton("Sign in")
+		<p class="text-center text-[13px] leading-relaxed text-hl-brown-soft">
+			Locked out? Your sign-in is reset from the server — reach whoever set up the site.
+		</p>
 	</form>
 }
