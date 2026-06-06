@@ -1,10 +1,89 @@
 package view
 
 import (
+	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/firefly-software-mt/advanced-template/internal/store"
 	"github.com/flintcraftstudio/flint-ui/components/badge"
 )
+
+// BookingsView is everything the bookings section needs to render: the active
+// status tab, the search term, the current page, and the page of results plus the
+// total match count for the pager.
+type BookingsView struct {
+	Status   string
+	Search   string
+	Page     int
+	PageSize int
+	Total    int
+	Bookings []store.Booking
+}
+
+// statusQuery is the "?status=x" suffix for a base path, or "" for the all tab.
+func statusQuery(status string) string {
+	if status == "" {
+		return ""
+	}
+	return "?status=" + status
+}
+
+// bookingsTabExtra is the extra query suffix the filter tabs carry so switching
+// status preserves the active search (already URL-escaped), or "" when no search.
+func bookingsTabExtra(search string) string {
+	if search == "" {
+		return ""
+	}
+	return "q=" + url.QueryEscape(search)
+}
+
+// bookingsURL builds a bookings URL carrying status, search, and page (page 1 and
+// empty filters are omitted for clean canonical URLs).
+func bookingsURL(status, search string, page int) string {
+	v := url.Values{}
+	if status != "" {
+		v.Set("status", status)
+	}
+	if search != "" {
+		v.Set("q", search)
+	}
+	if page > 1 {
+		v.Set("page", strconv.Itoa(page))
+	}
+	if len(v) == 0 {
+		return "/admin/bookings"
+	}
+	return "/admin/bookings?" + v.Encode()
+}
+
+// pagerLabel renders the "1–25 of 60" range for the current page.
+func pagerLabel(bv BookingsView) string {
+	if bv.Total == 0 {
+		return "No pickups"
+	}
+	start := (bv.Page-1)*bv.PageSize + 1
+	return fmt.Sprintf("%d–%d of %d", start, start+len(bv.Bookings)-1, bv.Total)
+}
+
+// hasNextPage reports whether another page of bookings exists after this one.
+func hasNextPage(bv BookingsView) bool {
+	return bv.Page*bv.PageSize < bv.Total
+}
+
+// bookingsEmptyMsg is the contextual empty-state line (search vs status vs none).
+func bookingsEmptyMsg(bv BookingsView) string {
+	switch {
+	case bv.Search != "":
+		return fmt.Sprintf("No pickups match “%s.”", bv.Search)
+	case bv.Status != "":
+		return "No " + strings.ToLower(bookingStatusLabel(bv.Status)) + " pickups right now."
+	default:
+		return "No pickups yet."
+	}
+}
 
 // statusMeta pairs a human label with the flint-ui badge variant for a status.
 type statusMeta struct {

@@ -17,8 +17,17 @@ import (
 const (
 	adminListLimit   = 200
 	adminRecentLimit = 5
+	adminPageSize    = 25
 	toastSaved       = `{"flint:toast":{"variant":"success","title":"Saved"}}`
 )
+
+// pageParam reads the 1-based ?page query value, defaulting to 1.
+func pageParam(r *http.Request) int {
+	if n, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && n > 1 {
+		return n
+	}
+	return 1
+}
 
 // allowed status values per resource (mirrors the view vocabularies).
 var (
@@ -58,16 +67,25 @@ func AdminDashboard(st *store.Store) http.HandlerFunc {
 func AdminBookings(st *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := validStatus(r.URL.Query().Get("status"), bookingStatuses)
-		bookings, err := st.ListBookings(r.Context(), status, adminListLimit)
+		search := strings.TrimSpace(r.URL.Query().Get("q"))
+		page := pageParam(r)
+		bookings, total, err := st.ListBookingsFiltered(r.Context(), store.BookingFilter{
+			Status: status, Search: search,
+			Limit: adminPageSize, Offset: (page - 1) * adminPageSize,
+		})
 		if err != nil {
 			adminServerError(w, r, "load bookings", err)
 			return
 		}
+		bv := view.BookingsView{
+			Status: status, Search: search, Page: page,
+			PageSize: adminPageSize, Total: total, Bookings: bookings,
+		}
 		if isHTMX(r) {
-			render(w, r, view.BookingsSection(status, bookings))
+			render(w, r, view.BookingsSection(bv))
 			return
 		}
-		render(w, r, view.AdminBookingsPage(userEmail(r), status, bookings))
+		render(w, r, view.AdminBookingsPage(userEmail(r), bv))
 	}
 }
 

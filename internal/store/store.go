@@ -213,6 +213,52 @@ func (s *Store) ListBookings(ctx context.Context, status string, limit int) ([]B
 	return out, rows.Err()
 }
 
+// BookingFilter parameterizes the admin bookings list: status tab, search box,
+// and pagination. An empty Status or Search means "no filter on that axis".
+type BookingFilter struct {
+	Status string
+	Search string
+	Limit  int
+	Offset int
+}
+
+// ListBookingsFiltered returns one page of bookings matching the filter, plus the
+// total number of matches (ignoring Limit/Offset) for pagination. Ordering is a
+// work queue: unscheduled (needs-a-date) first, then soonest scheduled date, with
+// most-recently-created as the tiebreaker.
+func (s *Store) ListBookingsFiltered(ctx context.Context, f BookingFilter) ([]Booking, int, error) {
+	where := "WHERE (? = '' OR status = ?)"
+	args := []any{f.Status, f.Status}
+	if f.Search != "" {
+		like := "%" + f.Search + "%"
+		where += " AND (name LIKE ? OR contact LIKE ? OR zip LIKE ?)"
+		args = append(args, like, like, like)
+	}
+
+	var total int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM bookings "+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	q := "SELECT " + bookingColumns + " FROM bookings " + where +
+		" ORDER BY (scheduled_date = '') DESC, scheduled_date ASC, created_at DESC LIMIT ? OFFSET ?"
+	rows, err := s.db.QueryContext(ctx, q, append(args, f.Limit, f.Offset)...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var out []Booking
+	for rows.Next() {
+		var b Booking
+		if err := scanBooking(rows, &b); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, b)
+	}
+	return out, total, rows.Err()
+}
+
 // ListWaitlist returns waitlist signups, newest first. A non-empty status filters
 // to that status; "" returns all.
 func (s *Store) ListWaitlist(ctx context.Context, status string, limit int) ([]WaitlistEntry, error) {

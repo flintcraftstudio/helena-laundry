@@ -122,18 +122,42 @@ templ recentCard(title, href string) {
 // Pickups
 // ===========================================================================
 
-templ AdminBookingsPage(userEmail, status string, bookings []store.Booking) {
-	@AdminBase("Pickups", userEmail, "bookings", adminSectionIntro("Pickup bookings", "Schedule, track, and close out every pickup.", BookingsSection(status, bookings)))
+templ AdminBookingsPage(userEmail string, bv BookingsView) {
+	@AdminBase("Pickups", userEmail, "bookings", adminSectionIntro("Pickup bookings", "Schedule, track, and close out every pickup.", BookingsSection(bv)))
 }
 
-templ BookingsSection(status string, bookings []store.Booking) {
+templ BookingsSection(bv BookingsView) {
 	<section id="bookings-section">
-		@adminFilterTabs("bookings-section", "/admin/bookings", status, bookingStatusOrder, bookingStatusLabel)
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			@adminFilterTabs("bookings-section", "/admin/bookings", bv.Status, bookingStatusOrder, bookingStatusLabel, bookingsTabExtra(bv.Search), "#bookings-spinner")
+			<div class="flex items-center gap-2">
+				<span id="bookings-spinner" class="htmx-indicator text-muted-foreground">
+					@iconSpinner("h-4 w-4 animate-spin")
+				</span>
+				@input.Input(input.Props{
+					Type:         "search",
+					Name:         "q",
+					Value:        bv.Search,
+					Placeholder:  "Search name, contact, ZIP…",
+					Autocomplete: "off",
+					Class:        "sm:w-64",
+					Attrs: templ.Attributes{
+						"hx-get":       "/admin/bookings" + statusQuery(bv.Status),
+						"hx-trigger":   "input changed delay:300ms, search",
+						"hx-target":    "#bookings-section",
+						"hx-swap":      "outerHTML",
+						"hx-indicator": "#bookings-spinner",
+						"hx-push-url":  "true",
+						"aria-label":   "Search pickups",
+					},
+				})
+			</div>
+		</div>
 		<div class="mt-4">
 			@card.Card(card.Props{}) {
 				@card.Body(card.SubProps{}) {
-					if len(bookings) == 0 {
-						@adminEmpty("No pickups here yet.")
+					if len(bv.Bookings) == 0 {
+						@adminEmpty(bookingsEmptyMsg(bv))
 					} else {
 						@table.Table(table.Props{}) {
 							@table.Head(table.HeadProps{}) {
@@ -148,7 +172,7 @@ templ BookingsSection(status string, bookings []store.Booking) {
 								</tr>
 							}
 							@table.Body(table.BodyProps{}) {
-								for _, b := range bookings {
+								for _, b := range bv.Bookings {
 									@BookingSummaryRow(b)
 								}
 							}
@@ -157,7 +181,39 @@ templ BookingsSection(status string, bookings []store.Booking) {
 				}
 			}
 		</div>
+		@bookingsPager(bv)
 	</section>
+}
+
+// bookingsPager shows the result range and Prev/Next paging (htmx, push-url).
+templ bookingsPager(bv BookingsView) {
+	if bv.Total > 0 {
+		<div class="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+			<span>{ pagerLabel(bv) }</span>
+			<div class="flex items-center gap-2">
+				@pagerButton(bv, bv.Page-1, "Prev", bv.Page <= 1)
+				@pagerButton(bv, bv.Page+1, "Next", !hasNextPage(bv))
+			</div>
+		</div>
+	}
+}
+
+templ pagerButton(bv BookingsView, page int, label string, disabled bool) {
+	if disabled {
+		@button.Button(button.Props{Plain: true, Disabled: true}) {
+			{ label }
+		}
+	} else {
+		@button.Button(button.Props{Plain: true, Attrs: templ.Attributes{
+			"hx-get":       bookingsURL(bv.Status, bv.Search, page),
+			"hx-target":    "#bookings-section",
+			"hx-swap":      "outerHTML",
+			"hx-indicator": "#bookings-spinner",
+			"hx-push-url":  "true",
+		}}) {
+			{ label }
+		}
+	}
 }
 
 templ BookingSummaryRow(b store.Booking) {
@@ -183,9 +239,11 @@ templ BookingEditRow(b store.Booking) {
 	<tr id={ rowID("booking", b.ID) } class="bg-muted/40">
 		<td colspan="7" class="px-4 py-5 sm:px-6">
 			<form
+				x-data={ "{ status: '" + b.Status + "' }" }
 				hx-post={ fmt.Sprintf("/admin/bookings/%d", b.ID) }
 				hx-target={ "#" + rowID("booking", b.ID) }
 				hx-swap="outerHTML"
+				hx-disabled-elt="find button[type='submit']"
 				class="grid gap-6 md:grid-cols-2"
 			>
 				<div class="space-y-1.5 text-sm">
@@ -201,7 +259,7 @@ templ BookingEditRow(b store.Booking) {
 					<div class="grid grid-cols-2 gap-3">
 						<label class="block">
 							<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-							@selectbox.Select(selectbox.Props{Name: "status"}) {
+							@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"x-model": "status"}}) {
 								for _, s := range bookingStatusOrder {
 									<option value={ s } selected?={ s == b.Status }>{ bookingStatusLabel(s) }</option>
 								}
@@ -220,7 +278,9 @@ templ BookingEditRow(b store.Booking) {
 						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
 						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 2, Value: b.AdminNotes, NonResizable: true})
 					</label>
-					@adminEditActions("/admin/bookings", "booking", b.ID)
+					@adminEditActions("/admin/bookings", "booking", b.ID, templ.Attributes{
+						"x-bind:hx-confirm": "status === 'canceled' ? 'Cancel this pickup? It drops off the calendar and the needs-a-date list.' : null",
+					})
 				</div>
 			</form>
 		</td>
@@ -237,7 +297,7 @@ templ AdminInquiriesPage(userEmail, status string, inquiries []store.Question) {
 
 templ InquiriesSection(status string, inquiries []store.Question) {
 	<section id="inquiries-section">
-		@adminFilterTabs("inquiries-section", "/admin/inquiries", status, questionStatusOrder, questionStatusLabel)
+		@adminFilterTabs("inquiries-section", "/admin/inquiries", status, questionStatusOrder, questionStatusLabel, "", "")
 		<div class="mt-4">
 			@card.Card(card.Props{}) {
 				@card.Body(card.SubProps{}) {
@@ -293,6 +353,7 @@ templ InquiryEditRow(q store.Question) {
 				hx-post={ fmt.Sprintf("/admin/inquiries/%d", q.ID) }
 				hx-target={ "#" + rowID("inquiry", q.ID) }
 				hx-swap="outerHTML"
+				hx-disabled-elt="find button[type='submit']"
 				class="grid gap-6 md:grid-cols-2"
 			>
 				<div class="space-y-1.5 text-sm">
@@ -315,7 +376,7 @@ templ InquiryEditRow(q store.Question) {
 						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
 						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: q.AdminNotes, NonResizable: true})
 					</label>
-					@adminEditActions("/admin/inquiries", "inquiry", q.ID)
+					@adminEditActions("/admin/inquiries", "inquiry", q.ID, nil)
 				</div>
 			</form>
 		</td>
@@ -332,7 +393,7 @@ templ AdminWaitlistPage(userEmail, status string, entries []store.WaitlistEntry)
 
 templ WaitlistSection(status string, entries []store.WaitlistEntry) {
 	<section id="waitlist-section">
-		@adminFilterTabs("waitlist-section", "/admin/waitlist", status, waitlistStatusOrder, waitlistStatusLabel)
+		@adminFilterTabs("waitlist-section", "/admin/waitlist", status, waitlistStatusOrder, waitlistStatusLabel, "", "")
 		<div class="mt-4">
 			@card.Card(card.Props{}) {
 				@card.Body(card.SubProps{}) {
@@ -389,6 +450,7 @@ templ WaitlistEditRow(e store.WaitlistEntry) {
 				hx-post={ fmt.Sprintf("/admin/waitlist/%d", e.ID) }
 				hx-target={ "#" + rowID("waitlist", e.ID) }
 				hx-swap="outerHTML"
+				hx-disabled-elt="find button[type='submit']"
 				class="grid gap-6 md:grid-cols-2"
 			>
 				<div class="space-y-1.5 text-sm">
@@ -412,7 +474,7 @@ templ WaitlistEditRow(e store.WaitlistEntry) {
 						<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
 						@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: e.AdminNotes, NonResizable: true})
 					</label>
-					@adminEditActions("/admin/waitlist", "waitlist", e.ID)
+					@adminEditActions("/admin/waitlist", "waitlist", e.ID, nil)
 				</div>
 			</form>
 		</td>
@@ -433,31 +495,43 @@ templ adminSectionIntro(title, lead string, section templ.Component) {
 }
 
 // adminFilterTabs is a flint-ui ModeServer tab row that swaps the section via htmx.
-templ adminFilterTabs(sectionID, basePath, active string, order []string, label func(string) string) {
+// extra is an optional query suffix carried on every tab (e.g. "q=foo" so a
+// search survives a status switch); indicator is an optional hx-indicator
+// selector. Pass "" for both on sections without search/indicator.
+templ adminFilterTabs(sectionID, basePath, active string, order []string, label func(string) string, extra, indicator string) {
 	@tabs.Tabs(tabs.Props{Mode: tabs.ModeServer, Active: statusKeyOrAll(active)}) {
 		@tabs.List(tabs.ListProps{Mode: tabs.ModeServer}) {
-			@adminFilterTab(sectionID, basePath, "all", "All", active)
+			@adminFilterTab(sectionID, basePath, "all", "All", active, extra, indicator)
 			for _, s := range order {
-				@adminFilterTab(sectionID, basePath, s, label(s), active)
+				@adminFilterTab(sectionID, basePath, s, label(s), active, extra, indicator)
 			}
 		}
 	}
 }
 
-templ adminFilterTab(sectionID, basePath, name, label, active string) {
+templ adminFilterTab(sectionID, basePath, name, label, active, extra, indicator string) {
 	@tabs.Tab(tabs.TabProps{
 		Name:   name,
 		Mode:   tabs.ModeServer,
 		Active: statusKeyOrAll(active),
-		Attrs: templ.Attributes{
-			"hx-get":      tabURL(basePath, name),
-			"hx-target":   "#" + sectionID,
-			"hx-swap":     "outerHTML",
-			"hx-push-url": "true",
-		},
+		Attrs:  tabAttrs(sectionID, basePath, name, extra, indicator),
 	}) {
 		{ label }
 	}
+}
+
+// tabAttrs builds the htmx attributes for one filter tab.
+func tabAttrs(sectionID, basePath, name, extra, indicator string) templ.Attributes {
+	a := templ.Attributes{
+		"hx-get":      tabURL(basePath, name, extra),
+		"hx-target":   "#" + sectionID,
+		"hx-swap":     "outerHTML",
+		"hx-push-url": "true",
+	}
+	if indicator != "" {
+		a["hx-indicator"] = indicator
+	}
+	return a
 }
 
 // adminDetail is a label/value line in an edit panel.
@@ -470,9 +544,12 @@ templ adminDetail(label, value string) {
 
 // adminEditActions is the Save / Cancel pair shared by every edit form. path is
 // the resource collection URL (e.g. "/admin/bookings"); kind is the row-id prefix.
-templ adminEditActions(path, kind string, id int64) {
+templ adminEditActions(path, kind string, id int64, saveAttrs templ.Attributes) {
 	<div class="flex items-center gap-3 pt-1">
-		@button.Button(button.Props{Variant: button.VariantAccent, Type: "submit"}) { Save }
+		@button.Button(button.Props{Variant: button.VariantAccent, Type: "submit", Attrs: saveAttrs}) {
+			Save
+			@iconSpinner("form-spinner ml-1 h-4 w-4 animate-spin")
+		}
 		@button.Button(button.Props{Plain: true, Attrs: templ.Attributes{
 			"hx-get":    fmt.Sprintf("%s/%d", path, id),
 			"hx-target": "#" + rowID(kind, id),
@@ -506,12 +583,19 @@ func editAttrs(path, kind string, id int64) templ.Attributes {
 	}
 }
 
-// tabURL builds a filter tab's hx-get URL ("all" drops the query).
-func tabURL(basePath, name string) string {
-	if name == "all" {
+// tabURL builds a filter tab's hx-get URL. "all" drops the status; extra is an
+// optional already-escaped query suffix (e.g. "q=foo").
+func tabURL(basePath, name, extra string) string {
+	switch {
+	case name == "all" && extra == "":
 		return basePath
+	case name == "all":
+		return basePath + "?" + extra
+	case extra == "":
+		return basePath + "?status=" + name
+	default:
+		return basePath + "?status=" + name + "&" + extra
 	}
-	return basePath + "?status=" + name
 }
 
 // statusKeyOrAll maps the empty status to the "all" tab key.
