@@ -155,6 +155,7 @@ func main() {
 	mux.Handle("POST /admin/inquiries/{id}", protected(handler.AdminInquiryUpdate(st)))
 	mux.Handle("GET /admin/settings", protected(handler.AdminSettings(st)))
 	mux.Handle("POST /admin/settings", protected(handler.AdminSettingsUpdate(st)))
+	mux.Handle("GET /admin/settings/flat-rate-row", protected(handler.AdminSettingsFlatRateRow()))
 	mux.Handle("GET /admin/waitlist", protected(handler.AdminWaitlist(st)))
 	mux.Handle("GET /admin/waitlist/{id}", protected(handler.AdminWaitlistRow(st)))
 	mux.Handle("GET /admin/waitlist/{id}/edit", protected(handler.AdminWaitlistEdit(st)))

@@ -18,9 +18,12 @@ const (
 	adminListLimit   = 200
 	adminRecentLimit = 5
 	adminPageSize    = 25
-	toastSaved       = `{"flint:toast":{"variant":"success","title":"Saved"}}`
+	toastSaved       = `{"flint:toast":{"variant":"success","title":"Saved","body":"Your site's updated."}}`
 	// toastSavedClose also slides the edit drawer shut (used by the row updates).
 	toastSavedClose = `{"flint:toast":{"variant":"success","title":"Saved"},"admin-drawer-close":true}`
+	// toastSettingsError fires when a save is rejected for bad input — the form
+	// comes back with the offending fields highlighted instead of going live.
+	toastSettingsError = `{"flint:toast":{"variant":"danger","title":"Not saved","body":"Check the highlighted fields."}}`
 )
 
 // pageParam reads the 1-based ?page query value, defaulting to 1.

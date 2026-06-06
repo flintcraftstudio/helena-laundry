@@ -15,71 +15,134 @@ import (
 var settingsWeekdays = []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
 
 templ AdminSettingsPage(userEmail string, s store.Settings) {
-	@AdminBase("Settings", userEmail, "settings", adminSectionIntro("Site settings", "What the public site says and who you pick up for. Saved changes take effect right away.", SettingsRegion(s)))
+	@AdminBase("Settings", userEmail, "settings", adminSectionIntro("Site settings", "What the public site says and who you pick up for.", SettingsRegion(s, nil)))
 }
 
-// SettingsRegion is the htmx swap target — the whole form re-renders on save.
-templ SettingsRegion(s store.Settings) {
+// SettingsRegion is the htmx swap target — the whole form re-renders on save (or
+// on a rejected save, with errs populated and the submitted values preserved).
+templ SettingsRegion(s store.Settings, errs map[string]string) {
 	<div id="settings-region">
-		<form hx-post="/admin/settings" hx-target="#settings-region" hx-swap="outerHTML" class="space-y-6">
+		<form
+			id="settings-form"
+			hx-post="/admin/settings"
+			hx-target="#settings-region"
+			hx-swap="outerHTML"
+			hx-disabled-elt="find button[type='submit']"
+			class="space-y-6"
+			x-data={ "{ accepting: " + boolJS(s.AcceptingBookings) + ", wasAccepting: " + boolJS(s.AcceptingBookings) + ", dirty: false }" }
+			@input="dirty = true"
+			@change="dirty = true"
+			@beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = '' }"
+			@htmx:confirm.window="if ($event.detail.elt === $el && wasAccepting && !accepting) { $event.preventDefault(); if (confirm('Pause new bookings? Your booking form will be hidden from the public site until you turn this back on.')) $event.detail.issueRequest(true) }"
+		>
+			@settingsBookingBanner(s)
 			@settingsCard("Business identity", "Shown across the public site — nav, footer, contact.") {
 				<div class="grid gap-4 sm:grid-cols-2">
-					@settingsField("Business name", "site_name", s.SiteName)
-					@settingsField("Phone (call/text)", "phone", s.Phone)
-					@settingsField("Email", "email", s.Email)
-					@settingsField("Hours", "hours", s.Hours)
-					@settingsField("Turnaround", "turnaround", s.Turnaround)
+					@settingsField("Business name", "site_name", s.SiteName, errs)
+					@settingsField("Phone (call/text)", "phone", s.Phone, errs)
+					@settingsField("Email", "email", s.Email, errs)
+					@settingsField("Hours", "hours", s.Hours, errs)
+					@settingsField("Turnaround", "turnaround", s.Turnaround, errs)
 				</div>
-				@settingsFieldWide("Tagline", "tagline", s.Tagline)
+				@settingsField("Tagline", "tagline", s.Tagline, errs)
 			}
-			@settingsCard("Service area & availability", "Where you pick up, which days, and whether you're taking new bookings.") {
-				<label class="flex items-center gap-3">
-					<input type="checkbox" name="accepting_bookings" value="1" checked?={ s.AcceptingBookings } class="h-5 w-5 accent-accent"/>
-					<span class="text-sm font-medium text-foreground">Accepting new bookings</span>
-					<span class="text-xs text-muted-foreground">Turn off to pause the booking form and decline new pickups.</span>
-				</label>
+			@settingsCard("Service area", "Where you pick up and which days.") {
 				<div>
-					<span class="mb-1.5 block text-sm font-medium text-foreground">Pickup ZIP codes</span>
-					@textarea.Textarea(textarea.Props{Name: "allowed_zips", Rows: 2, Value: strings.Join(s.AllowedZips, ", "), Placeholder: "59601, 59602, …"})
+					<label for="f-allowed_zips" class="mb-1.5 block text-sm font-medium text-foreground">Pickup ZIP codes</label>
+					@textarea.Textarea(textarea.Props{ID: "f-allowed_zips", Name: "allowed_zips", Rows: 2, Value: strings.Join(s.AllowedZips, ", "), Placeholder: "59601, 59602, …"})
 					<p class="mt-1 text-xs text-muted-foreground">Comma- or space-separated. Bookings outside these go to the waitlist.</p>
 				</div>
-				<div>
-					<span class="mb-1.5 block text-sm font-medium text-foreground">Pickup days</span>
+				<fieldset>
+					<legend class="mb-1.5 block text-sm font-medium text-foreground">Pickup days</legend>
 					<div class="flex flex-wrap gap-2">
 						for _, d := range settingsWeekdays {
 							<label class="cursor-pointer">
 								<input type="checkbox" name="pickup_days" value={ d } checked?={ daySelected(s.PickupDays, d) } class="peer sr-only"/>
-								<span class="inline-flex rounded-pill border border-border px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:text-accent">{ d }</span>
+								<span class="inline-flex rounded-pill border border-border px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface">{ d }</span>
 							</label>
 						}
 					</div>
-				</div>
+				</fieldset>
 			}
 			@settingsCard("Pricing", "Drives the booking form and the pickup email. (The marketing pages stay hand-written.)") {
 				<div class="grid gap-4 sm:grid-cols-3">
-					@settingsField("Per-pound rate ($)", "lb_rate", s.LbRate)
-					@settingsField("Rush rate ($)", "rush_rate", s.RushRate)
-					@settingsField("Minimum order ($)", "minimum_order", s.MinimumOrder)
+					@settingsMoneyField("Per-pound rate ($)", "lb_rate", s.LbRate, errs)
+					@settingsMoneyField("Rush rate ($)", "rush_rate", s.RushRate, errs)
+					@settingsMoneyField("Minimum order ($)", "minimum_order", s.MinimumOrder, errs)
 				</div>
 				<div class="space-y-2">
 					<span class="block text-sm font-medium text-foreground">Flat rates</span>
-					<div class="grid grid-cols-[1fr_7rem] gap-2 text-xs font-medium text-muted-foreground">
+					<div class="grid grid-cols-[1fr_6rem_2.25rem] gap-2 text-xs font-medium text-muted-foreground sm:grid-cols-[1fr_7rem_2.25rem]">
 						<span>Item</span>
 						<span>Price ($)</span>
+						<span class="sr-only">Remove</span>
 					</div>
-					for _, fr := range s.FlatRates {
-						@settingsFlatRow(fr.Label, fr.Price)
-					}
-					@settingsFlatRow("", "")
-					@settingsFlatRow("", "")
-					<p class="text-xs text-muted-foreground">Clear an item's name to remove it. Blank rows are ignored.</p>
+					<div id="flat-rate-rows" class="space-y-2">
+						for _, fr := range s.FlatRates {
+							@SettingsFlatRateRow(fr)
+						}
+					</div>
+					@fieldError("flat_rates", errs)
+					<button
+						type="button"
+						hx-get="/admin/settings/flat-rate-row"
+						hx-target="#flat-rate-rows"
+						hx-swap="beforeend"
+						class="inline-flex items-center gap-1.5 rounded-pill border border-border px-3.5 py-1.5 text-sm font-medium text-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+					>
+						@iconPlus("h-4 w-4")
+						Add item
+					</button>
+					<p class="text-xs text-muted-foreground">List the things you charge a flat price for. Blank rows are skipped.</p>
 				</div>
 			}
-			<div class="flex items-center gap-3">
-				@button.Button(button.Props{Variant: button.VariantAccent, Type: "submit"}) { Save settings }
-				<span class="text-xs text-muted-foreground">Changes apply to the live site immediately.</span>
-			</div>
+			@settingsSaveBar()
 		</form>
+	</div>
+}
+
+// settingsBookingBanner is the booking form's open/closed sign — the highest-
+// stakes control on the page, so it leads the form and reads its live state from
+// the Alpine `accepting` flag (kept in sync with the toggle). Turning it off
+// triggers a confirm before the save goes through (see the form's htmx:confirm).
+templ settingsBookingBanner(s store.Settings) {
+	<div
+		class="rounded-2xl border p-5 transition-colors"
+		:class="accepting ? 'border-accent/30 bg-accent/[0.06]' : 'border-warning/40 bg-warning/[0.08]'"
+	>
+		<div class="flex flex-wrap items-center justify-between gap-4">
+			<div class="min-w-0">
+				<p class="text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">Booking form</p>
+				<div class="mt-0.5 flex items-center gap-2">
+					<span class="h-2.5 w-2.5 rounded-full" :class="accepting ? 'bg-accent' : 'bg-warning'"></span>
+					<h3 class="font-display text-lg text-foreground">
+						<span x-show="accepting">Live on the site</span>
+						<span x-show="!accepting" x-cloak>Paused</span>
+					</h3>
+				</div>
+				<p class="mt-0.5 text-sm text-muted-foreground">
+					<span x-show="accepting">New pickups can be booked right now.</span>
+					<span x-show="!accepting" x-cloak>The public form is hidden until you turn this back on.</span>
+				</p>
+			</div>
+			<label class="inline-flex cursor-pointer items-center gap-3">
+				<span class="text-sm font-medium text-foreground" x-text="accepting ? 'Accepting' : 'Paused'"></span>
+				<input type="checkbox" name="accepting_bookings" value="1" checked?={ s.AcceptingBookings } x-model="accepting" class="peer sr-only" aria-label="Accepting new bookings"/>
+				<span class="relative h-6 w-11 rounded-full bg-border transition-colors peer-checked:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
+			</label>
+		</div>
+	</div>
+}
+
+// settingsSaveBar floats with the content so Save is reachable from any section,
+// and gives the submit a busy state instead of a silent click.
+templ settingsSaveBar() {
+	<div class="sticky bottom-4 z-10 flex items-center gap-3 rounded-2xl border border-border bg-surface/95 px-4 py-3 shadow-md backdrop-blur">
+		@button.Button(button.Props{Variant: button.VariantAccent, Type: "submit", Class: "shrink-0 whitespace-nowrap"}) {
+			@iconSpinner("form-spinner mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none")
+			Save settings
+		}
+		<span class="hidden text-xs text-muted-foreground sm:inline">Changes go live the moment you save.</span>
 	</div>
 }
 
@@ -95,25 +158,50 @@ templ settingsCard(title, lead string) {
 	}
 }
 
-templ settingsField(label, name, value string) {
-	<label class="block">
+// settingsField is a labelled text input that surfaces a validation error when
+// one is present (errs may be nil). The label is explicitly tied to the input,
+// and the error is wired up via aria-describedby for assistive tech.
+templ settingsField(label, name, value string, errs map[string]string) {
+	<label class="block" for={ "f-" + name }>
 		<span class="mb-1.5 block text-sm font-medium text-foreground">{ label }</span>
-		@input.Input(input.Props{Name: name, Value: value})
+		@input.Input(input.Props{ID: "f-" + name, Name: name, Value: value, Invalid: errs[name] != "", Attrs: describedBy(name, errs)})
+		@fieldError(name, errs)
 	</label>
 }
 
-templ settingsFieldWide(label, name, value string) {
-	<label class="block">
+// settingsMoneyField is settingsField tuned for a dollar amount — a decimal
+// keypad on mobile and a "$" placeholder hint.
+templ settingsMoneyField(label, name, value string, errs map[string]string) {
+	<label class="block" for={ "f-" + name }>
 		<span class="mb-1.5 block text-sm font-medium text-foreground">{ label }</span>
-		@input.Input(input.Props{Name: name, Value: value})
+		@input.Input(input.Props{ID: "f-" + name, Name: name, Value: value, Placeholder: "0.00", Invalid: errs[name] != "", Attrs: moneyAttrs(name, errs)})
+		@fieldError(name, errs)
 	</label>
 }
 
-templ settingsFlatRow(label, price string) {
-	<div class="grid grid-cols-[1fr_7rem] gap-2">
-		@input.Input(input.Props{Name: "flat_label", Value: label, Placeholder: "e.g. Queen bedding"})
-		@input.Input(input.Props{Name: "flat_price", Value: price, Placeholder: "30"})
+// SettingsFlatRateRow is one flat-rate line — exported so the "Add item" button
+// can fetch a fresh blank row. The remove button drops the row from the DOM; a
+// row that isn't submitted simply isn't saved.
+templ SettingsFlatRateRow(fr store.FlatRate) {
+	<div data-flat-row class="grid grid-cols-[1fr_6rem_2.25rem] items-start gap-2 sm:grid-cols-[1fr_7rem_2.25rem]">
+		@input.Input(input.Props{Name: "flat_label", Value: fr.Label, Placeholder: "e.g. Queen bedding", Attrs: templ.Attributes{"aria-label": "Flat-rate item name"}})
+		@input.Input(input.Props{Name: "flat_price", Value: fr.Price, Placeholder: "30", Attrs: templ.Attributes{"aria-label": "Flat-rate price in dollars", "inputmode": "decimal"}})
+		<button
+			type="button"
+			onclick="this.closest('[data-flat-row]').remove()"
+			aria-label="Remove this item"
+			class="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-danger/10 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			@iconTrash("h-4 w-4")
+		</button>
 	</div>
+}
+
+// fieldError renders the inline validation message for name, if any.
+templ fieldError(name string, errs map[string]string) {
+	if errs[name] != "" {
+		<p id={ "err-" + name } class="mt-1 text-xs text-danger">{ errs[name] }</p>
+	}
 }
 
 // daySelected reports whether d is in the selected pickup days.
@@ -124,4 +212,31 @@ func daySelected(days []string, d string) bool {
 		}
 	}
 	return false
+}
+
+// describedBy ties a field to its error message for assistive tech, or returns
+// nil when the field is clean.
+func describedBy(name string, errs map[string]string) templ.Attributes {
+	if errs[name] != "" {
+		return templ.Attributes{"aria-describedby": "err-" + name}
+	}
+	return nil
+}
+
+// moneyAttrs adds the decimal-keypad hint to a money field, plus the error
+// wiring when present.
+func moneyAttrs(name string, errs map[string]string) templ.Attributes {
+	a := templ.Attributes{"inputmode": "decimal"}
+	if errs[name] != "" {
+		a["aria-describedby"] = "err-" + name
+	}
+	return a
+}
+
+// boolJS renders a Go bool as a JS literal for an Alpine x-data expression.
+func boolJS(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
 }
