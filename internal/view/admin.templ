@@ -170,7 +170,9 @@ templ BookingsSection(bv BookingsView) {
 									@table.Header(table.HeaderProps{Class: "hidden lg:table-cell"}) { Plan }
 									@table.Header(table.HeaderProps{}) { Scheduled }
 									@table.Header(table.HeaderProps{}) { Status }
-									@table.Header(table.HeaderProps{Class: "text-right"}) { Manage }
+									@table.Header(table.HeaderProps{Class: "text-right"}) {
+										<span class="sr-only">Edit</span>
+									}
 								</tr>
 							}
 							@table.Body(table.BodyProps{}) {
@@ -219,7 +221,7 @@ templ pagerButton(bv BookingsView, page int, label string, disabled bool) {
 }
 
 templ BookingSummaryRow(b store.Booking) {
-	@table.Row(table.RowProps{Attrs: templ.Attributes{"id": rowID("booking", b.ID)}}) {
+	@table.Row(table.RowProps{Class: rowClickClass, Attrs: rowEditAttrs("/admin/bookings", "booking", b.ID, "Edit pickup for "+b.Name)}) {
 		@table.Cell(table.CellProps{}) {
 			<div class="font-medium text-foreground">{ b.Name }</div>
 			<div class="text-xs text-muted-foreground">{ orDash(b.Address) }, { orDash(b.Zip) }</div>
@@ -233,8 +235,8 @@ templ BookingSummaryRow(b store.Booking) {
 		@table.Cell(table.CellProps{}) {
 			@badge.Badge(badge.Props{Variant: bookingStatusVariant(b.Status)}) { { bookingStatusLabel(b.Status) } }
 		}
-		@table.Cell(table.CellProps{Class: "text-right"}) {
-			@button.Button(button.Props{Plain: true, Attrs: editAttrs("/admin/bookings", "booking", b.ID)}) { Manage }
+		@table.Cell(table.CellProps{Class: "text-right text-muted-foreground"}) {
+			@iconChevronRight("inline h-4 w-4")
 		}
 	}
 }
@@ -330,7 +332,9 @@ templ InquiriesSection(status string, inquiries []store.Question) {
 									@table.Header(table.HeaderProps{}) { Message }
 									@table.Header(table.HeaderProps{}) { Received }
 									@table.Header(table.HeaderProps{}) { Status }
-									@table.Header(table.HeaderProps{Class: "text-right"}) { Manage }
+									@table.Header(table.HeaderProps{Class: "text-right"}) {
+										<span class="sr-only">Edit</span>
+									}
 								</tr>
 							}
 							@table.Body(table.BodyProps{}) {
@@ -347,7 +351,7 @@ templ InquiriesSection(status string, inquiries []store.Question) {
 }
 
 templ InquirySummaryRow(q store.Question) {
-	@table.Row(table.RowProps{Attrs: templ.Attributes{"id": rowID("inquiry", q.ID)}}) {
+	@table.Row(table.RowProps{Class: rowClickClass, Attrs: rowEditAttrs("/admin/inquiries", "inquiry", q.ID, "Edit inquiry from "+q.Name)}) {
 		@table.Cell(table.CellProps{}) {
 			<div class="font-medium text-foreground">{ q.Name }</div>
 			<div class="text-xs text-muted-foreground">{ q.Contact }</div>
@@ -358,8 +362,8 @@ templ InquirySummaryRow(q store.Question) {
 		@table.Cell(table.CellProps{}) {
 			@badge.Badge(badge.Props{Variant: questionStatusVariant(q.Status)}) { { questionStatusLabel(q.Status) } }
 		}
-		@table.Cell(table.CellProps{Class: "text-right"}) {
-			@button.Button(button.Props{Plain: true, Attrs: editAttrs("/admin/inquiries", "inquiry", q.ID)}) { Manage }
+		@table.Cell(table.CellProps{Class: "text-right text-muted-foreground"}) {
+			@iconChevronRight("inline h-4 w-4")
 		}
 	}
 }
@@ -427,7 +431,9 @@ templ WaitlistSection(status string, entries []store.WaitlistEntry) {
 									@table.Header(table.HeaderProps{}) { Kind }
 									@table.Header(table.HeaderProps{}) { Received }
 									@table.Header(table.HeaderProps{}) { Status }
-									@table.Header(table.HeaderProps{Class: "text-right"}) { Manage }
+									@table.Header(table.HeaderProps{Class: "text-right"}) {
+										<span class="sr-only">Edit</span>
+									}
 								</tr>
 							}
 							@table.Body(table.BodyProps{}) {
@@ -444,7 +450,7 @@ templ WaitlistSection(status string, entries []store.WaitlistEntry) {
 }
 
 templ WaitlistSummaryRow(e store.WaitlistEntry) {
-	@table.Row(table.RowProps{Attrs: templ.Attributes{"id": rowID("waitlist", e.ID)}}) {
+	@table.Row(table.RowProps{Class: rowClickClass, Attrs: rowEditAttrs("/admin/waitlist", "waitlist", e.ID, "Edit waitlist entry for "+e.Name)}) {
 		@table.Cell(table.CellProps{}) {
 			<span class="font-medium text-foreground">{ e.Name }</span>
 		}
@@ -455,8 +461,8 @@ templ WaitlistSummaryRow(e store.WaitlistEntry) {
 		@table.Cell(table.CellProps{}) {
 			@badge.Badge(badge.Props{Variant: waitlistStatusVariant(e.Status)}) { { waitlistStatusLabel(e.Status) } }
 		}
-		@table.Cell(table.CellProps{Class: "text-right"}) {
-			@button.Button(button.Props{Plain: true, Attrs: editAttrs("/admin/waitlist", "waitlist", e.ID)}) { Manage }
+		@table.Cell(table.CellProps{Class: "text-right text-muted-foreground"}) {
+			@iconChevronRight("inline h-4 w-4")
 		}
 	}
 }
@@ -591,13 +597,23 @@ func rowID(kind string, id int64) string {
 	return fmt.Sprintf("%s-row-%d", kind, id)
 }
 
-// editAttrs are the htmx attributes that swap a summary row for its edit form.
-// path is the resource collection URL; kind is the row-id prefix.
-func editAttrs(path, kind string, id int64) templ.Attributes {
+// rowClickClass styles a summary row as a clickable control.
+const rowClickClass = "cursor-pointer transition hover:bg-muted/60 focus:outline-none focus-visible:bg-muted/60"
+
+// rowEditAttrs makes a summary <tr> the click / Enter target that swaps it for
+// its edit form (flint-ui's htmx-on-row pattern — no separate action button).
+// path is the resource collection URL; kind is the row-id prefix; label is the
+// row's accessible name.
+func rowEditAttrs(path, kind string, id int64, label string) templ.Attributes {
 	return templ.Attributes{
-		"hx-get":    fmt.Sprintf("%s/%d/edit", path, id),
-		"hx-target": "#" + rowID(kind, id),
-		"hx-swap":   "outerHTML",
+		"id":         rowID(kind, id),
+		"hx-get":     fmt.Sprintf("%s/%d/edit", path, id),
+		"hx-target":  "#" + rowID(kind, id),
+		"hx-swap":    "outerHTML",
+		"hx-trigger": "click, keyup[key=='Enter']",
+		"tabindex":   "0",
+		"role":       "button",
+		"aria-label": label,
 	}
 }
 
