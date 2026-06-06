@@ -136,6 +136,11 @@ func main() {
 	// Admin dashboard (all routes gated by RequireAuth -> /login).
 	protected := func(h http.Handler) http.Handler { return session.RequireAuth(h) }
 	mux.Handle("GET /admin", protected(handler.AdminDashboard(st)))
+	// Canonicalize the trailing-slash form so "/admin/" doesn't fall through to
+	// the 404 catch-all (only "GET /admin" is registered exactly).
+	mux.HandleFunc("GET /admin/{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/admin", http.StatusMovedPermanently)
+	})
 	mux.Handle("GET /admin/calendar", protected(handler.AdminCalendar(st)))
 	mux.Handle("GET /admin/calendar/pickup/{id}", protected(handler.AdminCalendarPickup(st)))
 	mux.Handle("POST /admin/calendar/pickup/{id}", protected(handler.AdminCalendarPickupUpdate(st)))
