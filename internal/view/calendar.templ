@@ -22,12 +22,15 @@ templ calendarBody(cal CalMonth) {
 }
 
 // CalendarRegion is the htmx swap target — month nav, the unscheduled strip, the
-// grid, and the (initially empty) edit panel all re-render together.
+// grid, and the phone agenda all re-render together. Editing happens in the
+// shared admin drawer (see CalendarPickupPanel), which lives outside this region.
 templ CalendarRegion(cal CalMonth) {
 	<div id="calendar-region">
 		@calToolbar(cal)
 		@calUnscheduled(cal.Unscheduled, cal.Month)
-		<div class="overflow-hidden rounded-2xl border border-border shadow-hl-sm">
+		@calLegend()
+		<!-- Month grid: tablet/desktop only — a 7-col grid is unreadable on a phone. -->
+		<div class="hidden overflow-hidden rounded-2xl border border-border shadow-hl-sm sm:block">
 			<div class="grid grid-cols-7 gap-px bg-border">
 				for _, wd := range WeekdayLabels {
 					<div class="bg-surface px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-caps text-muted-foreground">{ wd }</div>
@@ -39,7 +42,8 @@ templ CalendarRegion(cal CalMonth) {
 				}
 			</div>
 		</div>
-		<div id="pickup-panel"></div>
+		<!-- Agenda: phone view — the same month as a day-grouped list. -->
+		@calAgenda(cal)
 	</div>
 }
 
@@ -89,7 +93,7 @@ templ calUnscheduled(items []store.Booking, month string) {
 						type="button"
 						class="inline-flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-sm text-foreground transition hover:border-accent/50 hover:bg-muted"
 						hx-get={ pickupURL(b.ID, month) }
-						hx-target="#pickup-panel"
+						hx-target="#admin-drawer-body"
 						hx-swap="innerHTML"
 					>
 						<span class="font-medium">{ b.Name }</span>
@@ -99,6 +103,78 @@ templ calUnscheduled(items []store.Booking, month string) {
 			</div>
 		</div>
 	}
+}
+
+// calLegend is the key for the status dots used on the grid chips — without it
+// the colors are recognition-by-memory. Hidden from screen readers because each
+// chip already carries its status as sr-only text.
+templ calLegend() {
+	<div class="mb-3 hidden flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[11px] text-muted-foreground sm:flex" aria-hidden="true">
+		<span class="font-semibold uppercase tracking-caps text-muted-foreground/80">Status</span>
+		for _, s := range bookingStatusOrder {
+			<span class="inline-flex items-center gap-1.5">
+				<span class={ bookingDotClass(s) }></span>
+				{ bookingStatusLabel(s) }
+			</span>
+		}
+	</div>
+}
+
+// calAgenda is the phone view (below sm): the month's scheduled pickups as a
+// day-grouped list with full names, windows, and status text — the 7-col grid
+// crushes those to an undecodable dot on a narrow screen. Same tap-to-edit
+// behavior as the grid chips (loads the pickup panel).
+templ calAgenda(cal CalMonth) {
+	<div class="sm:hidden">
+		if calHasScheduled(cal) {
+			<ol class="space-y-5">
+				for _, week := range cal.Weeks {
+					for _, d := range week {
+						if d.InMonth && len(d.Bookings) > 0 {
+							@calAgendaDay(d, cal.Month)
+						}
+					}
+				}
+			</ol>
+		} else {
+			<p class="rounded-2xl border border-border bg-surface px-4 py-7 text-center text-sm text-muted-foreground shadow-hl-sm">
+				Nothing scheduled this month yet.
+			</p>
+		}
+	</div>
+}
+
+templ calAgendaDay(d CalDay, month string) {
+	<li>
+		<div class="mb-2 flex items-baseline gap-2">
+			<h3 class={ "font-display text-lg", templ.KV("text-accent", d.IsToday), templ.KV("text-foreground", !d.IsToday) }>{ agendaDayLabel(d) }</h3>
+			if d.IsToday {
+				<span class="rounded-pill bg-accent/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-caps text-accent">Today</span>
+			}
+		</div>
+		<div class="space-y-2">
+			for _, b := range d.Bookings {
+				@calAgendaRow(b, month)
+			}
+		</div>
+	</li>
+}
+
+templ calAgendaRow(b store.Booking, month string) {
+	<button
+		type="button"
+		class="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left shadow-hl-sm transition hover:border-accent/40 hover:bg-muted/40"
+		hx-get={ pickupURL(b.ID, month) }
+		hx-target="#admin-drawer-body"
+		hx-swap="innerHTML"
+	>
+		<span class={ bookingDotClass(b.Status) }></span>
+		<span class="min-w-0 flex-1">
+			<span class="block truncate font-medium text-foreground">{ b.Name }</span>
+			<span class="block truncate text-xs text-muted-foreground">{ agendaMeta(b) }</span>
+		</span>
+		<span class="shrink-0 text-xs font-medium text-muted-foreground">{ bookingStatusLabel(b.Status) }</span>
+	</button>
 }
 
 templ calDayCell(d CalDay, month string) {
@@ -125,74 +201,67 @@ templ calChip(b store.Booking, month string) {
 		class="flex w-full items-center gap-1.5 rounded-md bg-muted/70 px-1.5 py-1 text-left text-xs text-foreground transition hover:bg-muted"
 		title={ b.Name + " — " + bookingStatusLabel(b.Status) }
 		hx-get={ pickupURL(b.ID, month) }
-		hx-target="#pickup-panel"
+		hx-target="#admin-drawer-body"
 		hx-swap="innerHTML"
 	>
-		<span class={ "h-2 w-2 shrink-0 rounded-full", bookingDotClass(b.Status) }></span>
+		<span class={ bookingDotClass(b.Status) }></span>
 		<span class="truncate">{ b.Name }</span>
+		<span class="sr-only">— { bookingStatusLabel(b.Status) }</span>
 	</button>
 }
 
-// CalendarPickupPanel is the reschedule/status editor loaded into #pickup-panel
-// when a chip is clicked. Saving re-renders the whole #calendar-region.
+// CalendarPickupPanel is the slide-over drawer body for rescheduling one pickup
+// from the calendar — the same drawer used by Pickups and Inquiries. Mirrors
+// BookingEditPanel, but Save re-renders the whole #calendar-region (so the chip
+// moves to its new day) and the handler fires admin-drawer-close to slide the
+// panel shut. month is round-tripped so the rebuilt region stays on view.
 templ CalendarPickupPanel(b store.Booking, month string) {
-	<div class="mt-5 rounded-2xl border border-border bg-surface p-5 shadow-hl-md">
-		<div class="flex items-start justify-between gap-4">
-			<div>
-				<h3 class="font-display text-lg text-foreground">{ b.Name }</h3>
-				<p class="text-sm text-muted-foreground">{ b.Contact } · { planShort(b.Plan) } · { orDash(b.Address) }, { orDash(b.Zip) }</p>
-				if b.Notes != "" {
-					<p class="mt-1 text-sm text-muted-foreground">“{ b.Notes }”</p>
-				}
-			</div>
-			<button
-				type="button"
-				aria-label="Close"
-				class="shrink-0 rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-				onclick="document.getElementById('pickup-panel').innerHTML=''"
-			>
-				<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
-			</button>
-		</div>
+	@adminPanelShell("Edit pickup") {
 		<form
+			x-data={ "{ status: '" + b.Status + "' }" }
 			hx-post={ fmt.Sprintf("/admin/calendar/pickup/%d", b.ID) }
 			hx-target="#calendar-region"
 			hx-swap="outerHTML"
-			class="mt-4 grid gap-4 sm:grid-cols-3"
+			hx-disabled-elt="find button[type='submit']"
+			class="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5"
 		>
 			<input type="hidden" name="m" value={ month }/>
-			<label class="block">
-				<span class="mb-1.5 block text-sm font-medium text-foreground">Pickup date</span>
-				@input.Input(input.Props{Type: "date", Name: "scheduled_date", Value: b.ScheduledDate})
-			</label>
+			<div class="space-y-1.5 text-sm">
+				<h3 class="font-display text-base text-foreground">{ b.Name }</h3>
+				@adminDetail("Address", orDash(b.Address)+", "+orDash(b.Zip))
+				@adminDetail("Contact", b.Contact)
+				@adminDetail("Plan", planShort(b.Plan))
+				@adminDetail("Requested day", b.PickupDay)
+				@adminDetail("Their note", orDash(b.Notes))
+			</div>
+			<div class="grid grid-cols-2 gap-3">
+				<label class="block">
+					<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
+					@selectbox.Select(selectbox.Props{Name: "status", Attrs: templ.Attributes{"x-model": "status", "data-autofocus": "true"}}) {
+						for _, s := range bookingStatusOrder {
+							<option value={ s } selected?={ s == b.Status }>{ bookingStatusLabel(s) }</option>
+						}
+					}
+				</label>
+				<label class="block">
+					<span class="mb-1.5 block text-sm font-medium text-foreground">Pickup date</span>
+					@input.Input(input.Props{Type: "date", Name: "scheduled_date", Value: b.ScheduledDate})
+				</label>
+			</div>
 			<label class="block">
 				<span class="mb-1.5 block text-sm font-medium text-foreground">Window</span>
-				@input.Input(input.Props{Name: "pickup_window", Value: b.PickupWindow, Placeholder: "9–11am"})
+				@input.Input(input.Props{Name: "pickup_window", Value: b.PickupWindow, Placeholder: "e.g. 9–11am"})
 			</label>
 			<label class="block">
-				<span class="mb-1.5 block text-sm font-medium text-foreground">Status</span>
-				@selectbox.Select(selectbox.Props{Name: "status"}) {
-					for _, s := range bookingStatusOrder {
-						<option value={ s } selected?={ s == b.Status }>{ bookingStatusLabel(s) }</option>
-					}
-				}
-			</label>
-			<label class="block sm:col-span-3">
 				<span class="mb-1.5 block text-sm font-medium text-foreground">Private notes</span>
-				@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 2, Value: b.AdminNotes, NonResizable: true})
+				@textarea.Textarea(textarea.Props{Name: "admin_notes", Rows: 3, Value: b.AdminNotes, NonResizable: true})
 			</label>
-			<div class="flex items-center gap-3 sm:col-span-3">
-				@button.Button(button.Props{Variant: button.VariantAccent, Type: "submit"}) { Save }
-				@button.Button(button.Props{Plain: true, Attrs: templ.Attributes{
-					"type":    "button",
-					"onclick": "document.getElementById('pickup-panel').innerHTML=''",
-				}}) {
-					Cancel
-				}
-				<span class="text-xs text-muted-foreground">Clear the date to send it back to “needs a date.”</span>
-			</div>
+			<p class="text-xs text-muted-foreground">Clear the date to send it back to “needs a date.”</p>
+			@adminEditActions(templ.Attributes{
+				"x-bind:hx-confirm": "status === 'canceled' ? 'Cancel this pickup? It drops off the calendar and the needs-a-date list.' : null",
+			})
 		</form>
-	</div>
+	}
 }
 
 // calNavAttrs are the htmx attributes for a month-navigation control.

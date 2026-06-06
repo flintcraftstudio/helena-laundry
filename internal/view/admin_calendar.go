@@ -99,18 +99,60 @@ func BuildCalendar(month string, scheduled, unscheduled []store.Booking, now tim
 	}
 }
 
-// bookingDotClass is the status dot color for a compact calendar chip.
+// calHasScheduled reports whether any in-month day carries a booking — drives
+// the phone agenda's empty state.
+func calHasScheduled(cal CalMonth) bool {
+	for _, week := range cal.Weeks {
+		for _, d := range week {
+			if d.InMonth && len(d.Bookings) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// agendaDayLabel renders a phone agenda day heading like "Mon, Jun 8".
+func agendaDayLabel(d CalDay) string {
+	if t, err := time.Parse("2006-01-02", d.ISO); err == nil {
+		return t.Format("Mon, Jan 2")
+	}
+	return d.ISO
+}
+
+// agendaMeta is the secondary line on an agenda row: plan, plus the pickup
+// window when one is set.
+func agendaMeta(b store.Booking) string {
+	m := planShort(b.Plan)
+	if b.PickupWindow != "" {
+		m += " · " + b.PickupWindow
+	}
+	return m
+}
+
+// bookingDotClass returns the full class string for a status dot — a small
+// circle paired on two channels so the seven statuses stay distinguishable
+// without relying on hue alone: HUE groups the lifecycle (ochre = needs
+// scheduling, teal = booked & waiting, rust = in Chanté's hands, brown = done,
+// faint = off), and FILL splits each hue's two steps (a ring is the earlier /
+// in-flight step, a solid is the later / action-needed step). Used by both the
+// grid chips and the legend, so a dot always means the same thing.
 func bookingDotClass(status string) string {
+	const base = "h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] "
 	switch status {
 	case "new":
-		return "bg-warning"
-	case "scheduled", "picked_up", "in_progress":
-		return "bg-primary"
+		return base + "border-warning bg-warning"
+	case "scheduled":
+		return base + "border-success bg-transparent"
+	case "picked_up":
+		return base + "border-success bg-success"
+	case "in_progress":
+		return base + "border-accent bg-transparent"
 	case "ready":
-		return "bg-accent"
+		return base + "border-accent bg-accent"
 	case "delivered":
-		return "bg-success"
+		return base + "border-foreground bg-foreground"
 	default: // canceled / unknown
-		return "bg-muted-foreground"
+		return base + "border-muted-foreground bg-transparent"
 	}
 }

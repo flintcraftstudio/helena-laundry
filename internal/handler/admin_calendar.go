@@ -85,7 +85,7 @@ func AdminCalendarPickupUpdate(st *store.Store) http.HandlerFunc {
 			adminServerError(w, r, "rebuild calendar", err)
 			return
 		}
-		w.Header().Set("HX-Trigger", toastSaved)
+		w.Header().Set("HX-Trigger", toastSavedClose)
 		render(w, r, view.CalendarRegion(cal))
 	}
 }
