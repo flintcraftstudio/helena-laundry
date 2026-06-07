@@ -51,6 +51,12 @@ func main() {
 		slog.Warn("PIXEL_ID not set, Facebook Pixel disabled")
 	}
 
+	// Search-engine visibility — hidden on testing/staging deploys.
+	view.NoIndex = cfg.NoIndex
+	if cfg.NoIndex {
+		slog.Warn("SITE_NOINDEX set, blocking search engines (robots.txt, meta, and X-Robots-Tag)")
+	}
+
 	// Turnstile
 	view.TurnstileSiteKey = cfg.TurnstileSiteKey
 	if cfg.TurnstileSiteKey == "" || cfg.TurnstileSecretKey == "" {
@@ -116,6 +122,9 @@ func main() {
 	// Static files
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
+	// robots.txt (allows all, or disallows all when SITE_NOINDEX is set)
+	mux.Handle("GET /robots.txt", handler.Robots(cfg.NoIndex))
+
 	// Pages
 	mux.Handle("GET /{$}", handler.Home())
 	mux.Handle("GET /services", handler.Services())
@@ -166,6 +175,7 @@ func main() {
 
 	// Session + logging middleware
 	srv := session.Middleware(st)(mux)
+	srv = middleware.NoIndex(cfg.NoIndex)(srv)
 	srv = middleware.Logging(logger)(srv)
 
 	// --- Graceful shutdown sequence ---

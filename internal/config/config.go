@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // The pickup service area (allowed ZIPs) now lives in the settings table, edited
@@ -20,6 +21,10 @@ type Config struct {
 	TurnstileSecretKey string
 	DBPath             string
 	SessionSecret      string
+	// NoIndex, when true, asks search engines not to crawl or index the site —
+	// for a testing/staging deploy that shouldn't surface in results yet. Drives
+	// robots.txt, a robots meta tag, and an X-Robots-Tag header. Default false.
+	NoIndex bool
 }
 
 // Load reads configuration from environment variables, applying defaults where not set.
@@ -40,7 +45,19 @@ func Load() (*Config, error) {
 		TurnstileSecretKey: os.Getenv("TURNSTILE_SECRET_KEY"),
 		DBPath:             envDefault("DB_PATH", "./data/app.db"),
 		SessionSecret:      os.Getenv("SESSION_SECRET"),
+		NoIndex:            parseBool("SITE_NOINDEX"),
 	}, nil
+}
+
+// parseBool reads an environment variable as a boolean flag. Accepts the usual
+// truthy spellings (1, true, yes, on); anything else — including unset — is false.
+func parseBool(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // Addr returns the server address string in the format expected by http.ListenAndServe.

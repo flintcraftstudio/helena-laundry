@@ -40,6 +40,10 @@ var (
 	TurnstileSiteKey string
 )
 
+// NoIndex, when true, renders a robots noindex/nofollow meta tag on every public
+// page — set once at startup from config for testing/staging deploys.
+var NoIndex bool
+
 // ApplySettings copies the settings row into the package-level view vars the
 // templates read. Safe to call at startup and after each settings save.
 func ApplySettings(s store.Settings) {

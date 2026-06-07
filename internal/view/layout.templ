@@ -6,6 +6,9 @@ templ Base(title, description string, body templ.Component) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			if NoIndex {
+				<meta name="robots" content="noindex, nofollow"/>
+			}
 			<meta name="description" content={ description }/>
 			<title>{ title } | { SiteName }</title>
 			<meta name="theme-color" content="#C0492B"/>
